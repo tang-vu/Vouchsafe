@@ -38,6 +38,14 @@ async function main() {
   const verifierAddress = await verifier.getAddress();
   console.log(`SolvencyVerifier:  ${verifierAddress}`);
 
+  // FCC on-chain footprint. TeeExtensionRegistry is not yet in the Coston2 FlareContractRegistry, so
+  // deploy in simulated (event-anchored) mode with the registry address unset (zero).
+  const Sender = await ethers.getContractFactory("VouchsafeInstructionSender");
+  const sender = await Sender.deploy(ethers.ZeroAddress);
+  await sender.waitForDeployment();
+  const senderAddress = await sender.getAddress();
+  console.log(`InstructionSender: ${senderAddress}`);
+
   // --- wire roles ---
   await (await registry.setVerifier(verifierAddress)).wait();
   await (await staking.setSlasher(verifierAddress)).wait();
@@ -52,6 +60,7 @@ async function main() {
       SolvencyRegistry: registryAddress,
       AttestorStaking: stakingAddress,
       SolvencyVerifier: verifierAddress,
+      VouchsafeInstructionSender: senderAddress,
     },
     params: {
       minStake: minStake.toString(),
@@ -72,6 +81,7 @@ async function main() {
     console.log(`  ${base}${registryAddress}`);
     console.log(`  ${base}${stakingAddress}`);
     console.log(`  ${base}${verifierAddress}`);
+    console.log(`  ${base}${senderAddress}`);
   }
 }
 

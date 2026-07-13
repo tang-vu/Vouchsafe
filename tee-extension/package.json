@@ -1,0 +1,24 @@
+{
+  "name": "@vouchsafe/tee-extension",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Vouchsafe confidential solvency-compute extension (simulated TEE)",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "ts-node src/index.ts",
+    "self-test": "ts-node src/self-test.ts",
+    "prove-and-record": "ts-node src/prove-and-record.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "ethers": "^6.4.0",
+    "express": "^4.19.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
+  }
+}

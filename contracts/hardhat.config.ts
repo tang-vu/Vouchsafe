@@ -39,8 +39,9 @@ const config: HardhatUserConfig = {
     },
   },
   etherscan: {
-    // Blockscout-based verification for Coston2.
-    apiKey: { coston2: FLARE_EXPLORER_API_KEY },
+    // Blockscout-based verification for Coston2. Blockscout ignores the token value, but the
+    // hardhat-verify plugin requires a non-empty string, so fall back to a placeholder.
+    apiKey: { coston2: FLARE_EXPLORER_API_KEY || "coston2-blockscout" },
     customChains: [
       {
         network: "coston2",

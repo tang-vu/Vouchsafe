@@ -1,0 +1,16 @@
+{
+  "name": "vouchsafe",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Private, stake-backed proof-of-solvency for RWA issuers and FAsset agents on Flare",
+  "workspaces": [
+    "contracts"
+  ],
+  "packageManager": "yarn@1.22.22",
+  "scripts": {
+    "compile": "yarn workspace @vouchsafe/contracts compile",
+    "test": "yarn workspace @vouchsafe/contracts test",
+    "deploy:coston2": "yarn workspace @vouchsafe/contracts deploy:coston2"
+  },
+  "license": "MIT"
+}

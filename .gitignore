@@ -1,0 +1,16 @@
+node_modules/
+dist/
+build/
+artifacts/
+cache/
+typechain-types/
+coverage/
+coverage.json
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+
+*.log
+.DS_Store

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vouchsafe — Private Proof of Solvency</title>
+    <style>
+      :root { color-scheme: light dark; }
+      * { box-sizing: border-box; }
+      body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; line-height: 1.5;
+        background: #0b1020; color: #e6e9f0; }
+      header { padding: 28px 20px; text-align: center; border-bottom: 1px solid #1e2740; }
+      header h1 { margin: 0 0 6px; font-size: 22px; }
+      header p { margin: 0; color: #9aa4c0; font-size: 14px; }
+      main { max-width: 860px; margin: 0 auto; padding: 20px; display: grid; gap: 18px; }
+      .card { background: #121a30; border: 1px solid #223056; border-radius: 12px; padding: 18px; }
+      .card h2 { margin: 0 0 4px; font-size: 16px; }
+      .card .hint { color: #8b95b5; font-size: 13px; margin: 0 0 14px; }
+      label { display: block; font-size: 12px; color: #9aa4c0; margin: 10px 0 4px; }
+      input { width: 100%; padding: 9px 11px; border-radius: 8px; border: 1px solid #2a3760;
+        background: #0d1428; color: #e6e9f0; font-size: 14px; }
+      button { margin-top: 14px; padding: 10px 16px; border: 0; border-radius: 8px; cursor: pointer;
+        background: #4f7cff; color: white; font-weight: 600; font-size: 14px; }
+      button:disabled { opacity: .55; cursor: default; }
+      button.danger { background: #c2405a; }
+      .out { margin-top: 14px; background: #0a0f1f; border: 1px solid #1c2542; border-radius: 8px;
+        padding: 12px; font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; white-space: pre-wrap;
+        word-break: break-all; min-height: 20px; }
+      a { color: #7fa2ff; }
+      .pill { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px;
+        background: #1c2a4d; color: #9fb4ff; margin-left: 6px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Vouchsafe</h1>
+      <p>Private, stake-backed proof of solvency for RWA issuers &amp; FAsset agents on Flare (Coston2)</p>
+    </header>
+    <main>
+      <section class="card">
+        <h2>1 · Issuer / Agent — prove solvency <span class="pill">private</span></h2>
+        <p class="hint">Figures go into the TEE; only a signed attestation + FDC reserve proof reach the chain. Takes ~2 min (FDC round).</p>
+        <label>Subject (FXRP agent vault)</label>
+        <input id="subject" value="0x5b89514d1F060AdbEA8B7294AFf81ed8dbAa7fC5" />
+        <label>Reserves (comma-separated; must sum to the public reserves endpoint value)</label>
+        <input id="reserves" value="1000000,500000" />
+        <label>Liabilities (private — never leaves the enclave)</label>
+        <input id="liabilities" value="900000" />
+        <button id="attestBtn" onclick="doAttest()">Prove &amp; record</button>
+        <div class="out" id="attestOut"></div>
+      </section>
+
+      <section class="card">
+        <h2>2 · Third party — verify <span class="pill">no numbers</span></h2>
+        <p class="hint">Paste an attestation id to see "solvent at T" with the input hash — never the figures.</p>
+        <label>Attestation id</label>
+        <input id="verifyId" placeholder="0x…" />
+        <button onclick="doVerify()">Verify</button>
+        <div class="out" id="verifyOut"></div>
+      </section>
+
+      <section class="card">
+        <h2>3 · Fraud demo — slash <span class="pill">accountable</span></h2>
+        <p class="hint">A malicious attestor lies (insolvent). The fraud is proven on-chain and the stake is slashed. Takes ~2 min.</p>
+        <button class="danger" id="fraudBtn" onclick="doFraud()">Run fraud → slash</button>
+        <div class="out" id="fraudOut"></div>
+      </section>
+    </main>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const asList = (s) => s.split(",").map((x) => x.trim()).filter(Boolean);
+
+      async function doAttest() {
+        const btn = $("attestBtn"), out = $("attestOut");
+        btn.disabled = true; out.textContent = "Signing in TEE, requesting FDC proof, recording… (~2 min)";
+        try {
+          const r = await fetch("/api/attest", { method: "POST", headers: { "content-type": "application/json" },
+            body: JSON.stringify({ subject: $("subject").value, reserves: asList($("reserves").value), liabilities: asList($("liabilities").value) }) });
+          const d = await r.json();
+          if (!r.ok) throw new Error(d.error || "failed");
+          out.innerHTML = `solvent: ${d.solvent}\nattestation id: ${d.attestationId}\ninputHash: ${d.inputHash}\n` +
+            `tx: <a href="${d.explorerUrl}" target="_blank">${d.explorerUrl}</a>`;
+          $("verifyId").value = d.attestationId;
+        } catch (e) { out.textContent = "Error: " + e.message; }
+        btn.disabled = false;
+      }
+
+      async function doVerify() {
+        const out = $("verifyOut");
+        out.textContent = "Reading chain…";
+        try {
+          const r = await fetch("/api/attestation/" + $("verifyId").value.trim());
+          const d = await r.json();
+          if (!r.ok) throw new Error(d.error || "failed");
+          out.textContent = `subject:  ${d.subject}\nsolvent:  ${d.solvent}\nat T:     ${d.timestamp}\n` +
+            `inputHash: ${d.inputHash}\nrevoked:  ${d.revoked}\n(no reserves/liabilities on-chain)`;
+        } catch (e) { out.textContent = "Error: " + e.message; }
+      }
+
+      async function doFraud() {
+        const btn = $("fraudBtn"), out = $("fraudOut");
+        btn.disabled = true; out.textContent = "Recording a lie, then proving fraud & slashing… (~2 min)";
+        try {
+          const r = await fetch("/api/fraud", { method: "POST", headers: { "content-type": "application/json" },
+            body: JSON.stringify({ subject: $("subject").value, reserves: asList($("reserves").value), liabilities: ["2000000"] }) });
+          const d = await r.json();
+          if (!r.ok) throw new Error(d.error || "failed");
+          out.innerHTML = `fraudulent id: ${d.attestationId}\nstake: ${d.stakeBefore} → ${d.stakeAfter} C2FLR (slashed)\n` +
+            `slash tx: <a href="${d.fraudExplorerUrl}" target="_blank">${d.fraudExplorerUrl}</a>`;
+        } catch (e) { out.textContent = "Error: " + e.message; }
+        btn.disabled = false;
+      }
+    </script>
+  </body>
+</html>

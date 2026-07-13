@@ -5,13 +5,17 @@
   "description": "Private, stake-backed proof-of-solvency for RWA issuers and FAsset agents on Flare",
   "workspaces": [
     "contracts",
-    "tee-extension"
+    "tee-extension",
+    "attestor-service"
   ],
   "packageManager": "yarn@1.22.22",
   "scripts": {
     "compile": "yarn workspace @vouchsafe/contracts compile",
     "test": "yarn workspace @vouchsafe/contracts test",
-    "deploy:coston2": "yarn workspace @vouchsafe/contracts deploy:coston2"
+    "deploy:coston2": "yarn workspace @vouchsafe/contracts deploy:coston2",
+    "build:tee": "yarn workspace @vouchsafe/tee-extension build",
+    "service": "yarn build:tee && yarn workspace @vouchsafe/attestor-service start",
+    "demo": "yarn build:tee && yarn workspace @vouchsafe/attestor-service demo"
   },
   "license": "MIT"
 }

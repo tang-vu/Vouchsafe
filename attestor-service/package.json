@@ -1,17 +1,15 @@
 {
-  "name": "@vouchsafe/tee-extension",
+  "name": "@vouchsafe/attestor-service",
   "version": "0.1.0",
   "private": true,
-  "description": "Vouchsafe confidential solvency-compute extension (simulated TEE)",
-  "main": "dist/lib.js",
-  "types": "dist/lib.d.ts",
+  "description": "Vouchsafe orchestrator: inputs -> TEE extension -> FDC proof -> on-chain record",
+  "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
     "start": "ts-node src/index.ts",
-    "self-test": "ts-node src/self-test.ts",
-    "prove-record-fdc": "ts-node src/prove-record-fdc.ts"
+    "demo": "ts-node src/demo.ts"
   },
   "dependencies": {
+    "@vouchsafe/tee-extension": "*",
     "dotenv": "^16.4.7",
     "ethers": "^6.4.0",
     "express": "^4.19.0"

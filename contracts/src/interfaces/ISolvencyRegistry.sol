@@ -11,8 +11,8 @@ interface ISolvencyRegistry {
      * @dev A single recorded solvency attestation.
      * @param subject            Entity whose solvency is asserted (e.g. an FXRP agent vault/management address).
      * @param attestor           Staked address that submitted (and is economically accountable for) the assertion.
-     * @param inputHash          Commitment to the private inputs: keccak256(abi.encode(reserves, liabilities, salt)).
-     * @param reservesCommitment Commitment binding the assertion to FDC-attested reserves: keccak256(abi.encode(totalReserves, salt)).
+     * @param inputHash          Commitment to the inputs (hides the private liabilities): keccak256(abi.encode(totalReserves, totalLiabilities, salt)).
+     * @param reservesCommitment Binds the claim to the FDC-attested reserves: keccak256(abi.encode(totalReserves)). Reserves are public (attested from a public source); liabilities stay private.
      * @param timestamp          Time the assertion was recorded on-chain (block time).
      * @param nonce              Unique per-assertion value; prevents replay of a signed attestation.
      * @param solvent            Asserted result: reserves >= liabilities.

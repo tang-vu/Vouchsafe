@@ -10,8 +10,10 @@ const CLAIM =
 export const VERIFIER_ABI = [
   "function teeAddress() view returns (address)",
   "function setTeeAddress(address)",
+  "function reservesSourceHash(address) view returns (bytes32)",
+  "function setReservesSource(address subject, string url)",
   `function recordSolvency(${CLAIM} claim, bytes teeSignature, ${FDC_PROOF} fdcProof) returns (bytes32)`,
-  `function raiseFraud(bytes32 id, uint256 liabilities, bytes32 salt, ${FDC_PROOF} fdcProof)`,
+  "function raiseFraud(bytes32 id, uint256 reserves, uint256 liabilities, bytes32 salt)",
 ];
 
 export const STAKING_ABI = [

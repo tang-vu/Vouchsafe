@@ -6,6 +6,8 @@ import {
   toUtf8Bytes,
   AbiCoder,
   formatEther,
+  randomBytes,
+  hexlify,
 } from "ethers";
 import { createApp, TeeSigner, proveReserves, teeConfig } from "@vouchsafe/tee-extension";
 import { config } from "./config";
@@ -19,6 +21,21 @@ function provider(): JsonRpcProvider {
 }
 function makeSigner(): TeeSigner {
   return new TeeSigner(teeConfig.teeSignerPrivateKey, teeConfig.simulated);
+}
+// CSPRNG salt (bytes32) and nonce (uint256) — never Date.now()/Math.random().
+function randomSalt(): string {
+  return hexlify(randomBytes(32));
+}
+function randomNonce(): string {
+  return BigInt(hexlify(randomBytes(32))).toString();
+}
+
+/** Register the subject's reserves source with the verifier (owner-only; the demo key is the owner). */
+async function ensureReservesSource(verifier: Contract, subject: string) {
+  const expected = keccak256(toUtf8Bytes(config.reservesUrl));
+  if ((await verifier.reservesSourceHash(subject)) !== expected) {
+    await (await verifier.setReservesSource(subject, config.reservesUrl)).wait();
+  }
 }
 
 /** Start the confidential extension in-process (stands in for the enclave endpoint). */
@@ -86,8 +103,8 @@ export async function attest(input: AttestInput, log: Logger = console.log): Pro
         subject: input.subject,
         reserves: input.reserves,
         liabilities: input.liabilities,
-        salt: keccak256(toUtf8Bytes(`vouchsafe-${Date.now()}-${Math.random()}`)),
-        nonce: Date.now().toString(),
+        salt: randomSalt(),
+        nonce: randomNonce(),
         chainId: config.chainId,
         verifier: config.addresses.SolvencyVerifier,
       },
@@ -109,6 +126,7 @@ export async function attest(input: AttestInput, log: Logger = console.log): Pro
   const verifier = new Contract(config.addresses.SolvencyVerifier, VERIFIER_ABI, wallet);
   const staking = new Contract(config.addresses.AttestorStaking, STAKING_ABI, wallet);
   await ensureSetup(verifier, staking, signer, wallet);
+  await ensureReservesSource(verifier, attestation.subject);
 
   const claim = {
     subject: attestation.subject,
@@ -153,11 +171,11 @@ export async function commitFraud(input: AttestInput, log: Logger = console.log)
 
   const totalReserves = input.reserves.reduce((a, b) => a + BigInt(b), 0n);
   const totalLiabilities = input.liabilities.reduce((a, b) => a + BigInt(b), 0n);
-  const salt = keccak256(toUtf8Bytes(`fraud-${Date.now()}`));
+  const salt = randomSalt();
   const inputHash = keccak256(coder.encode(["uint256", "uint256", "bytes32"], [totalReserves, totalLiabilities, salt]));
   const reservesCommitment = keccak256(coder.encode(["uint256"], [totalReserves]));
   const timestamp = Math.floor(Date.now() / 1000);
-  const nonce = Date.now().toString();
+  const nonce = randomNonce();
 
   // Malicious signature: solvent=true even though totalReserves < totalLiabilities.
   const digest = signer.digest({
@@ -178,6 +196,7 @@ export async function commitFraud(input: AttestInput, log: Logger = console.log)
   const verifier = new Contract(config.addresses.SolvencyVerifier, VERIFIER_ABI, wallet);
   const staking = new Contract(config.addresses.AttestorStaking, STAKING_ABI, wallet);
   await ensureSetup(verifier, staking, signer, wallet);
+  await ensureReservesSource(verifier, input.subject);
 
   const claim = { subject: input.subject, inputHash, reservesCommitment, solvent: true, timestamp, nonce };
   const id = keccak256(coder.encode(["address", "address", "bytes32", "uint256"], [input.subject, wallet.address, inputHash, BigInt(nonce)]));
@@ -186,7 +205,8 @@ export async function commitFraud(input: AttestInput, log: Logger = console.log)
   const recordReceipt = await (await verifier.recordSolvency(claim, sig, proof)).wait();
   log("Fraudulent 'solvent' attestation recorded on-chain");
 
-  const fraudReceipt = await (await verifier.raiseFraud(id, totalLiabilities, salt, proof)).wait();
+  // Challenge with the committed figures only (no FDC needed — inputHash already fixes the reserves).
+  const fraudReceipt = await (await verifier.raiseFraud(id, totalReserves, totalLiabilities, salt)).wait();
   const stakeAfter: bigint = await staking.stakeOf(wallet.address);
   log("Fraud proven -> attestor slashed");
 

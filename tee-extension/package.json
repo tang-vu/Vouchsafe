@@ -8,8 +8,7 @@
   "scripts": {
     "build": "tsc",
     "start": "ts-node src/index.ts",
-    "self-test": "ts-node src/self-test.ts",
-    "prove-record-fdc": "ts-node src/prove-record-fdc.ts"
+    "self-test": "ts-node src/self-test.ts"
   },
   "dependencies": {
     "dotenv": "^16.4.7",

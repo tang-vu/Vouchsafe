@@ -24,9 +24,10 @@ interface IAttestorStaking {
     /// @notice Withdraw fully-unbonded funds.
     function withdraw() external;
 
-    /// @notice Slash `amount` (capped at active stake) from `attestor`, optionally paying a beneficiary.
-    ///         Restricted to the slasher (the verifier contract).
-    function slash(address attestor, uint256 amount, address beneficiary) external;
+    /// @notice Slash up to `amount` from `attestor` (active stake first, then unbonding funds), optionally
+    ///         paying a beneficiary. Never reverts on a zero balance. Restricted to the slasher (verifier).
+    /// @return slashed The amount actually slashed.
+    function slash(address attestor, uint256 amount, address beneficiary) external returns (uint256 slashed);
 
     /// @notice Extend the stake lock for `attestor` to at least `lockedUntil`. Slasher-only.
     function lockUntil(address attestor, uint64 lockedUntil) external;

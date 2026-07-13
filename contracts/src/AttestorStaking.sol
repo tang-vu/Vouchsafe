@@ -101,21 +101,26 @@ contract AttestorStaking is Ownable, ReentrancyGuard, IAttestorStaking {
         external
         onlySlasher
         nonReentrant
+        returns (uint256 slashed)
     {
         StakeInfo storage s = _stakes[attestor];
-        uint256 slashAmount = amount > s.amount ? s.amount : amount;
-        require(slashAmount > 0, "AttestorStaking: nothing to slash");
 
-        s.amount -= slashAmount;
+        // Cover active stake first, then unbonding funds — so an attestor cannot dodge a slash by
+        // requesting an unstake. Never reverts on a zero balance, so a fraud challenge can still revoke.
+        uint256 fromActive = amount > s.amount ? s.amount : amount;
+        s.amount -= fromActive;
+        uint256 remaining = amount - fromActive;
+        uint256 fromPending = remaining > s.pendingWithdrawal ? s.pendingWithdrawal : remaining;
+        s.pendingWithdrawal -= fromPending;
+        slashed = fromActive + fromPending;
 
-        if (beneficiary != address(0)) {
-            (bool ok, ) = payable(beneficiary).call{value: slashAmount}("");
+        if (slashed > 0 && beneficiary != address(0)) {
+            (bool ok, ) = payable(beneficiary).call{value: slashed}("");
             require(ok, "AttestorStaking: payout failed");
         }
-        // If beneficiary is the zero address the slashed funds stay in the contract (effectively burned
-        // from the attestor's perspective; recoverable only by governance if later added).
+        // With a zero beneficiary the slashed funds stay in the contract (burned from the attestor's view).
 
-        emit Slashed(attestor, slashAmount, beneficiary);
+        emit Slashed(attestor, slashed, beneficiary);
     }
 
     /// @inheritdoc IAttestorStaking

@@ -19,13 +19,14 @@ struct DataTransportObject {
  * @title SolvencyVerifier
  * @notice Records a solvency attestation only when BOTH halves check out:
  *         1. Confidential compute: the assertion was signed inside the registered TEE
- *            (`ecrecover == teeAddress`), mirroring the Flare FCC settlement pattern.
- *         2. Interoperable data: an FDC Web2Json proof attests the off-chain reserves, and that
- *            attested figure is bound to the TEE claim via `reservesCommitment`.
+ *            (`ecrecover == teeAddress`) over a chain- and verifier-bound EIP-191 digest.
+ *         2. Interoperable data: an FDC Web2Json proof, fetched from the reserves source registered for
+ *            the subject, whose attested reserves total matches the TEE claim's `reservesCommitment`.
  *         The attestor's stake backs the assertion and is slashed by an evidence-based fraud challenge.
- * @dev Raw reserves/liabilities never appear on-chain; only commitments and the boolean result do.
- *      The FDC verifier is resolved via `ContractRegistry.getFdcVerification()` in production, with an
- *      owner-settable override so unit tests can inject a mock.
+ * @dev Reserves are public (attested from a public endpoint); liabilities stay private (only committed
+ *      via `inputHash`). Fraud is proven by revealing the committed reserves/liabilities/salt that open
+ *      `inputHash` with `reserves < liabilities` — no FDC proof is needed at challenge time, so reserve
+ *      drift after recording cannot shield a fraudulent attestation.
  */
 contract SolvencyVerifier is Ownable {
     using MessageHashUtils for bytes32;
@@ -48,13 +49,25 @@ contract SolvencyVerifier is Ownable {
     uint64 public challengeWindow;
     uint256 public slashPenalty;
 
-    /// @notice Test-only override for the FDC verifier. Zero => resolve via ContractRegistry.
+    /// @notice Max age (seconds) of a claim's asserted timestamp relative to block time; also bounds
+    ///         future skew to `TIMESTAMP_FUTURE_SKEW`.
+    uint64 public maxTimestampAge;
+    uint64 public constant TIMESTAMP_FUTURE_SKEW = 300;
+
+    /// @notice keccak256 of the approved reserves-source URL for each subject. Binds an FDC proof to a
+    ///         source the owner vetted, so an attestor cannot fabricate reserves from their own endpoint.
+    mapping(address => bytes32) public reservesSourceHash;
+
+    /// @notice Test-only override for the FDC verifier, once-lockable to prevent a production bypass.
     address public fdcVerifierOverride;
+    bool public fdcOverrideLocked;
 
     mapping(uint256 => bool) public usedNonce;
 
     event TeeAddressUpdated(address indexed teeAddress);
     event FdcVerifierOverrideUpdated(address indexed verifier);
+    event FdcOverrideLocked();
+    event ReservesSourceSet(address indexed subject, bytes32 urlHash);
     event SolvencyRecorded(bytes32 indexed id, address indexed subject, address indexed attestor, uint64 timestamp);
     event FraudProven(bytes32 indexed id, address indexed attestor, address indexed challenger, uint256 slashed);
 
@@ -68,6 +81,7 @@ contract SolvencyVerifier is Ownable {
         staking = _staking;
         challengeWindow = _challengeWindow;
         slashPenalty = _slashPenalty;
+        maxTimestampAge = 3600;
     }
 
     // --- admin ---
@@ -85,9 +99,27 @@ contract SolvencyVerifier is Ownable {
         slashPenalty = _penalty;
     }
 
+    function setMaxTimestampAge(uint64 _age) external onlyOwner {
+        maxTimestampAge = _age;
+    }
+
+    /// @notice Register the approved reserves-source URL for a subject (its hash is stored).
+    function setReservesSource(address subject, string calldata url) external onlyOwner {
+        bytes32 h = keccak256(bytes(url));
+        reservesSourceHash[subject] = h;
+        emit ReservesSourceSet(subject, h);
+    }
+
     function setFdcVerifierOverride(address _override) external onlyOwner {
+        require(!fdcOverrideLocked, "SolvencyVerifier: override locked");
         fdcVerifierOverride = _override;
         emit FdcVerifierOverrideUpdated(_override);
+    }
+
+    /// @notice Permanently disable the FDC verifier override (one-way), forcing registry resolution.
+    function lockFdcVerifierOverride() external onlyOwner {
+        fdcOverrideLocked = true;
+        emit FdcOverrideLocked();
     }
 
     // --- signature scheme ---
@@ -120,8 +152,15 @@ contract SolvencyVerifier is Ownable {
         return IWeb2JsonVerifier(address(ContractRegistry.getFdcVerification()));
     }
 
-    function _attestedReserves(IWeb2Json.Proof calldata fdcProof) internal view returns (uint256) {
+    /// @dev Verify an FDC proof, require it came from the subject's approved source, and return reserves.
+    function _attestedReserves(IWeb2Json.Proof calldata fdcProof, address subject) internal view returns (uint256) {
         require(fdcVerifier().verifyWeb2Json(fdcProof), "SolvencyVerifier: bad FDC proof");
+        bytes32 srcHash = reservesSourceHash[subject];
+        require(srcHash != bytes32(0), "SolvencyVerifier: source not set");
+        require(
+            keccak256(bytes(fdcProof.data.requestBody.url)) == srcHash,
+            "SolvencyVerifier: source mismatch"
+        );
         DataTransportObject memory dto = abi.decode(fdcProof.data.responseBody.abiEncodedData, (DataTransportObject));
         return dto.reserves;
     }
@@ -130,7 +169,8 @@ contract SolvencyVerifier is Ownable {
 
     /**
      * @notice Record a solvency attestation. Requires a valid TEE signature AND a valid FDC reserves
-     *         proof whose attested reserves total matches the claim's `reservesCommitment`.
+     *         proof (from the subject's approved source) whose attested reserves match the claim's
+     *         `reservesCommitment`. The asserted timestamp must be recent.
      */
     function recordSolvency(
         SolvencyClaim calldata claim,
@@ -141,9 +181,14 @@ contract SolvencyVerifier is Ownable {
         require(staking.stakeOf(msg.sender) >= staking.minStake(), "SolvencyVerifier: insufficient stake");
         require(!usedNonce[claim.nonce], "SolvencyVerifier: nonce used");
         require(claim.solvent, "SolvencyVerifier: not solvent");
+        require(
+            claim.timestamp <= block.timestamp + TIMESTAMP_FUTURE_SKEW &&
+                claim.timestamp + maxTimestampAge >= block.timestamp,
+            "SolvencyVerifier: stale timestamp"
+        );
         require(recoverSigner(claim, teeSignature) == teeAddress, "SolvencyVerifier: bad TEE signature");
 
-        uint256 reserves = _attestedReserves(fdcProof);
+        uint256 reserves = _attestedReserves(fdcProof, claim.subject);
         require(keccak256(abi.encode(reserves)) == claim.reservesCommitment, "SolvencyVerifier: reserves mismatch");
 
         usedNonce[claim.nonce] = true;
@@ -168,21 +213,14 @@ contract SolvencyVerifier is Ownable {
 
     /**
      * @notice Prove a recorded attestation was fraudulent and slash its attestor. Permissionless.
-     * @dev The challenger reveals the committed `liabilities` + `salt` and supplies an FDC proof of the
-     *      actual reserves. If the reveal opens the recorded `inputHash` (proving these are the exact
-     *      committed figures) and the attested reserves are below the committed liabilities, then the
-     *      "solvent" assertion was false. The slashed stake is paid to the challenger.
+     * @dev The challenger reveals the exact committed `reserves`, `liabilities`, and `salt`. If they open
+     *      the recorded `inputHash` and `reserves < liabilities`, the "solvent" assertion was false. No FDC
+     *      proof is used here: `inputHash` already fixes the reserves that were asserted, so post-recording
+     *      reserve drift cannot shield a fraud. The revocation is applied even if there is nothing to slash.
      */
-    function raiseFraud(
-        bytes32 id,
-        uint256 liabilities,
-        bytes32 salt,
-        IWeb2Json.Proof calldata fdcProof
-    ) external {
+    function raiseFraud(bytes32 id, uint256 reserves, uint256 liabilities, bytes32 salt) external {
         ISolvencyRegistry.SolvencyAttestation memory att = registry.getAttestation(id);
         require(!att.revoked, "SolvencyVerifier: already revoked");
-
-        uint256 reserves = _attestedReserves(fdcProof);
         require(
             keccak256(abi.encode(reserves, liabilities, salt)) == att.inputHash,
             "SolvencyVerifier: reveal mismatch"
@@ -190,8 +228,8 @@ contract SolvencyVerifier is Ownable {
         require(reserves < liabilities, "SolvencyVerifier: not insolvent");
 
         registry.markRevoked(id);
-        staking.slash(att.attestor, slashPenalty, msg.sender);
+        uint256 slashed = staking.slash(att.attestor, slashPenalty, msg.sender);
 
-        emit FraudProven(id, att.attestor, msg.sender, slashPenalty);
+        emit FraudProven(id, att.attestor, msg.sender, slashed);
     }
 }

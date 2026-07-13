@@ -70,6 +70,8 @@ contract VouchsafeInstructionSender is Ownable {
                 })
             );
         } else {
+            // Simulated (event-anchored) mode routes nothing on-chain, so reject value to avoid trapping it.
+            require(msg.value == 0, "VouchsafeInstructionSender: no fee in simulated mode");
             localInstructionCount += 1;
             instructionId = keccak256(
                 abi.encode(address(this), block.chainid, localInstructionCount, subject, message)

@@ -91,6 +91,22 @@ describe("AttestorStaking", () => {
     expect(await staking.stakeOf(attestor.address)).to.equal(0n);
   });
 
+  it("slashes unbonding funds too (cannot dodge a slash by unstaking)", async () => {
+    await staking.connect(attestor).stake({ value: ethers.parseEther("2") });
+    await staking.connect(attestor).requestUnstake(ethers.parseEther("2")); // moves to pendingWithdrawal
+    expect(await staking.stakeOf(attestor.address)).to.equal(0n);
+
+    await staking.connect(slasher).slash(attestor.address, MIN_STAKE, beneficiary.address);
+    const info = await staking.stakeInfoOf(attestor.address);
+    expect(info.pendingWithdrawal).to.equal(ethers.parseEther("1"));
+  });
+
+  it("does not revert when there is nothing to slash", async () => {
+    await expect(staking.connect(slasher).slash(attestor.address, MIN_STAKE, beneficiary.address))
+      .to.emit(staking, "Slashed")
+      .withArgs(attestor.address, 0n, beneficiary.address);
+  });
+
   it("only owner can set slasher / minStake", async () => {
     await expect(staking.connect(stranger).setSlasher(stranger.address)).to.be.reverted;
     await expect(staking.connect(stranger).setMinStake(1)).to.be.reverted;

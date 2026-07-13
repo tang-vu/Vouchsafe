@@ -36,7 +36,7 @@ flowchart TD
     V -->|store| REG
     V -->|subject = agent vault| FX
 
-    CH["Challenger"] -->|"raiseFraud(id, liabilities, salt, fdcProof)"| V
+    CH["Challenger"] -->|"raiseFraud(id, reserves, liabilities, salt)"| V
     V -->|reveal opens inputHash & reserves < liabilities| V
     V -->|slash| STK
     V -->|revoke| REG
@@ -56,9 +56,11 @@ flowchart TD
 
 - `inputHash = keccak256(abi.encode(totalReserves, totalLiabilities, salt))` — commits to the full private input.
 - `reservesCommitment = keccak256(abi.encode(totalReserves))` — binds the TEE's reserves to the FDC-attested value.
-- **Fraud:** a challenger reveals `(liabilities, salt)` and supplies an FDC proof of actual reserves. If the reveal
-  opens the recorded `inputHash` **and** `reserves < liabilities`, the "solvent" claim was false → the stake is
-  slashed (paid to the challenger) and the attestation revoked. Liabilities stay private until a challenge.
+- **Fraud:** a challenger reveals the committed `(reserves, liabilities, salt)`. If they open the recorded
+  `inputHash` **and** `reserves < liabilities`, the "solvent" claim was false → the stake is slashed (paid to the
+  challenger) and the attestation revoked. No FDC proof is needed at challenge time — `inputHash` already fixes the
+  reserves that were asserted, so post-recording reserve drift cannot shield a fraud. Liabilities stay private
+  until a challenge (the intended RWA model: figures are disclosed to an auditor/counterparty who can challenge).
 
 ## On-chain contracts (Coston2, Solidity 0.8.25 / EVM cancun)
 

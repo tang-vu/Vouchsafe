@@ -3,114 +3,315 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Vouchsafe — Private Proof of Solvency</title>
-    <style>
-      :root { color-scheme: light dark; }
-      * { box-sizing: border-box; }
-      body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; line-height: 1.5;
-        background: #0b1020; color: #e6e9f0; }
-      header { padding: 28px 20px; text-align: center; border-bottom: 1px solid #1e2740; }
-      header h1 { margin: 0 0 6px; font-size: 22px; }
-      header p { margin: 0; color: #9aa4c0; font-size: 14px; }
-      main { max-width: 860px; margin: 0 auto; padding: 20px; display: grid; gap: 18px; }
-      .card { background: #121a30; border: 1px solid #223056; border-radius: 12px; padding: 18px; }
-      .card h2 { margin: 0 0 4px; font-size: 16px; }
-      .card .hint { color: #8b95b5; font-size: 13px; margin: 0 0 14px; }
-      label { display: block; font-size: 12px; color: #9aa4c0; margin: 10px 0 4px; }
-      input { width: 100%; padding: 9px 11px; border-radius: 8px; border: 1px solid #2a3760;
-        background: #0d1428; color: #e6e9f0; font-size: 14px; }
-      button { margin-top: 14px; padding: 10px 16px; border: 0; border-radius: 8px; cursor: pointer;
-        background: #4f7cff; color: white; font-weight: 600; font-size: 14px; }
-      button:disabled { opacity: .55; cursor: default; }
-      button.danger { background: #c2405a; }
-      .out { margin-top: 14px; background: #0a0f1f; border: 1px solid #1c2542; border-radius: 8px;
-        padding: 12px; font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; white-space: pre-wrap;
-        word-break: break-all; min-height: 20px; }
-      a { color: #7fa2ff; }
-      .pill { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px;
-        background: #1c2a4d; color: #9fb4ff; margin-left: 6px; }
-    </style>
+    <title>Vouchsafe — Private, stake-backed proof of solvency on Flare</title>
+    <meta name="description" content="Prove reserves ≥ liabilities without revealing your books. Confidential compute + FDC data + a stake you lose if you lied. Live on Flare Coston2." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%236d8bff' d='M12 2l8 3v6c0 5-3.4 8.6-8 11-4.6-2.4-8-6-8-11V5l8-3z'/%3E%3Cpath fill='%23fff' d='M10.5 14.2l-2.3-2.3-1.3 1.3 3.6 3.6 6-6-1.3-1.3z'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <header>
-      <h1>Vouchsafe</h1>
-      <p>Private, stake-backed proof of solvency for RWA issuers &amp; FAsset agents on Flare (Coston2)</p>
+    <!-- ===================================================== nav ===== -->
+    <nav class="nav">
+      <div class="wrap nav-inner">
+        <div class="brand">
+          <svg class="mark" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="url(#g)" d="M12 2l8 3v6c0 5-3.4 8.6-8 11-4.6-2.4-8-6-8-11V5l8-3z" />
+            <path fill="#fff" d="M10.6 14.3l-2.3-2.3-1.4 1.4 3.7 3.7 6.2-6.2-1.4-1.4z" />
+            <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#6d8bff" /><stop offset="1" stop-color="#9a7bff" />
+            </linearGradient></defs>
+          </svg>
+          Vouchsafe
+        </div>
+        <div class="nav-links">
+          <a href="#prove">Prove</a>
+          <a href="#verify">Verify</a>
+          <a href="#accountability">Accountability</a>
+          <a href="#how">How it works</a>
+          <span class="net-pill" id="netPill"><span class="net-dot"></span><span id="netText">connecting…</span></span>
+        </div>
+      </div>
+    </nav>
+
+    <!-- ==================================================== hero ===== -->
+    <header class="hero wrap">
+      <span class="eyebrow">◆ Flare Summer Signal · Coston2</span>
+      <h1>Prove you're solvent.<br />Reveal nothing.</h1>
+      <p class="lede">
+        Vouchsafe lets an RWA issuer or FXRP agent prove <b>reserves ≥ liabilities</b> without disclosing a single
+        figure. The check runs inside a <b>confidential enclave</b>, an <b>FDC</b> proof anchors the reserves, and the
+        attestor posts a <b>stake they lose if they lied</b>. Private and accountable.
+      </p>
+      <div class="hero-cta">
+        <a class="btn" href="#prove">Run a live proof →</a>
+        <a class="btn ghost" href="#how">See how it works</a>
+      </div>
+      <div class="bounties">
+        <span class="bounty"><b>Interoperable Asset Products</b> — FDC Web2Json + real FXRP agent</span>
+        <span class="bounty"><b>Confidential Compute Apps</b> — TEE compute + on-chain ecrecover</span>
+      </div>
+      <div class="chips" id="addrChips"><span class="chip"><span class="k">loading contracts…</span></span></div>
     </header>
-    <main>
-      <section class="card">
-        <h2>1 · Issuer / Agent — prove solvency <span class="pill">private</span></h2>
-        <p class="hint">Figures go into the TEE; only a signed attestation + FDC reserve proof reach the chain. Takes ~2 min (FDC round).</p>
-        <label>Subject (FXRP agent vault)</label>
-        <input id="subject" value="0x5b89514d1F060AdbEA8B7294AFf81ed8dbAa7fC5" />
-        <label>Reserves (comma-separated; must sum to the public reserves endpoint value)</label>
-        <input id="reserves" value="1000000,500000" />
-        <label>Liabilities (private — never leaves the enclave)</label>
-        <input id="liabilities" value="900000" />
-        <button id="attestBtn" onclick="doAttest()">Prove &amp; record</button>
-        <div class="out" id="attestOut"></div>
+
+    <main class="wrap">
+      <!-- ============================================== pipeline ===== -->
+      <section class="block" id="pipeline-sec">
+        <div class="section-head">
+          <div class="kicker">The protocol</div>
+          <h2>One record, two independent proofs</h2>
+          <p>Every attestation must clear all five stages. Watch them light up as a proof runs — the same spine drives
+             the honest path and the fraud path below.</p>
+        </div>
+        <div class="pipeline" id="pipeline">
+          <div class="track"><div class="fill" id="pipeFill"></div></div>
+
+          <div class="stage" data-role="input" data-stage="input">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+            </div>
+            <div class="t">Private inputs</div>
+            <div class="d">Reserves &amp; liabilities never leave the issuer</div>
+            <div class="st"><span class="dot"></span><span class="lbl">idle</span></div>
+          </div>
+
+          <div class="stage" data-role="tee" data-stage="tee">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>
+            </div>
+            <div class="t">Confidential compute</div>
+            <div class="d">Enclave checks &amp; signs a commitment</div>
+            <div class="st"><span class="dot"></span><span class="lbl">idle</span></div>
+          </div>
+
+          <div class="stage" data-role="fdc" data-stage="fdc">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 15l6-6"/><path d="M13.5 6.5l1-1a3.5 3.5 0 0 1 5 5l-1 1"/><path d="M10.5 17.5l-1 1a3.5 3.5 0 0 1-5-5l1-1"/></svg>
+            </div>
+            <div class="t">FDC data proof</div>
+            <div class="d">Web2Json attests off-chain reserves</div>
+            <div class="st"><span class="dot"></span><span class="lbl">idle</span></div>
+          </div>
+
+          <div class="stage" data-role="chain" data-stage="chain">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2l9 5-9 5-9-5 9-5z"/><path d="M3 12l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg>
+            </div>
+            <div class="t">On-chain record</div>
+            <div class="d">"Solvent at T" — hash only, no numbers</div>
+            <div class="st"><span class="dot"></span><span class="lbl">idle</span></div>
+          </div>
+
+          <div class="stage" data-role="accord" data-stage="accord">
+            <div class="ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v18"/><path d="M6 8h12"/><path d="M6 8l-3 6a3 3 0 0 0 6 0z"/><path d="M18 8l-3 6a3 3 0 0 0 6 0z"/><path d="M8 21h8"/></svg>
+            </div>
+            <div class="t">Accountability</div>
+            <div class="d">Stake backs the claim · slashed if false</div>
+            <div class="st"><span class="dot"></span><span class="lbl">idle</span></div>
+          </div>
+        </div>
       </section>
 
-      <section class="card">
-        <h2>2 · Third party — verify <span class="pill">no numbers</span></h2>
-        <p class="hint">Paste an attestation id to see "solvent at T" with the input hash — never the figures.</p>
-        <label>Attestation id</label>
-        <input id="verifyId" placeholder="0x…" />
-        <button onclick="doVerify()">Verify</button>
-        <div class="out" id="verifyOut"></div>
+      <!-- ================================================= prove ===== -->
+      <section class="block" id="prove">
+        <div class="section-head">
+          <div class="kicker">Act I · The issuer</div>
+          <h2>Prove solvency <span class="tag private">confidential</span></h2>
+          <p>Feed the enclave your figures. Only a signed commitment and an FDC reserve proof reach the chain — the raw
+             numbers stay with you. Runs live on Coston2 (~2 min for one FDC round).</p>
+        </div>
+
+        <div class="grid-2">
+          <!-- left: form + commitment builder -->
+          <div class="card">
+            <h3>Issuer input <span class="tag private" style="margin-left:auto">private</span></h3>
+            <p class="sub">Subject is the FXRP agent vault whose solvency you're asserting.</p>
+            <label>Subject — FXRP agent vault</label>
+            <input id="subject" type="text" value="0x5b89514d1F060AdbEA8B7294AFf81ed8dbAa7fC5" />
+            <label>Reserves <span class="hintk">comma-separated · must sum to the public reserves endpoint</span></label>
+            <input id="reserves" type="text" value="1000000,500000" />
+            <label>Liabilities <span class="hintk">private — never leaves the enclave</span></label>
+            <input id="liabilities" type="text" value="900000" />
+
+            <div id="solvencyPreview" class="callout" style="margin-top:16px">
+              <span class="ic">◇</span>
+              <span id="solvencyPreviewText">Enter figures to preview the enclave's verdict locally.</span>
+            </div>
+
+            <button class="btn" id="attestBtn" style="margin-top:16px; width:100%">
+              <span class="lbl">Prove &amp; record on Coston2</span>
+            </button>
+          </div>
+
+          <!-- right: commitment builder (client-side keccak) -->
+          <div class="card">
+            <h3>Commitment builder <span class="tag chain" style="margin-left:auto">on-chain hash</span></h3>
+            <p class="sub">This reproduces, in your browser, the <span class="mono">keccak256(abi.encode(…))</span> the
+               verifier computes on-chain. It's proof that the chain only ever stores a <em>hash</em>.</p>
+
+            <label>Salt <span class="hintk">32-byte secret that hides the figures</span></label>
+            <div style="display:flex; gap:8px">
+              <input id="salt" type="text" />
+              <button class="btn ghost sm" id="rollSalt" title="Fresh random salt">⟳</button>
+            </div>
+
+            <div class="ledger" style="margin-top:16px">
+              <div class="col off">
+                <h4>▲ Stays private</h4>
+                <p class="note">Inside the enclave · never transmitted</p>
+                <div class="kv"><span class="k">reserves Σ</span><span class="v secret" id="cbReserves">—</span></div>
+                <div class="kv"><span class="k">liabilities Σ</span><span class="v secret" id="cbLiab">—</span></div>
+              </div>
+              <div class="col on">
+                <h4>◆ Goes on-chain</h4>
+                <p class="note">The only thing the world sees</p>
+                <div class="kv"><span class="k">inputHash</span><span class="v hash" id="cbInputHash">—</span></div>
+                <div class="kv"><span class="k">reservesCommitment</span><span class="v hash" id="cbResCommit">—</span></div>
+              </div>
+            </div>
+            <p class="faint" style="font-size:11.5px; margin:12px 0 0">
+              Change any figure or the salt and both hashes change completely — yet neither can be reversed back to the
+              numbers. The live proof above uses a fresh CSPRNG salt generated inside the enclave.
+            </p>
+          </div>
+        </div>
+
+        <!-- live console + result span full width -->
+        <div class="card" style="margin-top:16px">
+          <h3>Live trace</h3>
+          <p class="sub">Real orchestration: enclave signature → FDC round-trip → <span class="mono">recordSolvency</span> on Coston2.</p>
+          <div class="console" id="attestConsole"></div>
+          <div class="result" id="attestResult">
+            <div class="bar" id="attestResultBar"></div>
+            <div class="body" id="attestResultBody"></div>
+          </div>
+        </div>
       </section>
 
-      <section class="card">
-        <h2>3 · Fraud demo — slash <span class="pill">accountable</span></h2>
-        <p class="hint">A malicious attestor lies (insolvent). The fraud is proven on-chain and the stake is slashed. Takes ~2 min.</p>
-        <button class="danger" id="fraudBtn" onclick="doFraud()">Run fraud → slash</button>
-        <div class="out" id="fraudOut"></div>
+      <!-- ================================================ verify ===== -->
+      <section class="block" id="verify">
+        <div class="section-head">
+          <div class="kicker">Act II · The counterparty</div>
+          <h2>Verify without numbers <span class="tag interop">public</span></h2>
+          <p>Anyone can confirm "solvent at T" straight from the chain. Paste an attestation id — you'll see the exact
+             registry record and nothing more. No reserves. No liabilities.</p>
+        </div>
+        <div class="card">
+          <label>Attestation id</label>
+          <div style="display:flex; gap:8px; flex-wrap:wrap">
+            <input id="verifyId" type="text" placeholder="0x… (auto-filled after you run a proof)" style="flex:1; min-width:240px" />
+            <button class="btn" id="verifyBtn">Verify on-chain</button>
+          </div>
+          <div class="result" id="verifyResult">
+            <div class="body" id="verifyBody"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================== accountability ===== -->
+      <section class="block" id="accountability">
+        <div class="section-head">
+          <div class="kicker">Act III · The consequence</div>
+          <h2>Lie, and lose the stake <span class="tag account">accountable</span></h2>
+          <p>Privacy without accountability is just a secret. Here a malicious attestor signs "solvent" over figures
+             that are actually insolvent, records it — then anyone reveals the committed figures and slashes the stake.</p>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h3>The fraud</h3>
+            <p class="sub">Reserves &lt; liabilities, but signed <span class="mono">solvent = true</span>.</p>
+            <div class="steps">
+              <div class="step-row"><div class="n">1</div><div class="txt"><b>Malicious sign</b> — the TEE key signs a false "solvent" claim.</div></div>
+              <div class="step-row"><div class="n">2</div><div class="txt"><b>Record</b> — it lands on-chain, backed by a live stake.</div></div>
+              <div class="step-row"><div class="n">3</div><div class="txt"><b>Challenge</b> — anyone reveals the committed <span class="mono">reserves, liabilities, salt</span> that open <span class="mono">inputHash</span> with reserves &lt; liabilities.</div></div>
+              <div class="step-row"><div class="n">4</div><div class="txt"><b>Slash</b> — the verifier revokes the record and the stake is forfeited.</div></div>
+            </div>
+            <button class="btn danger" id="fraudBtn" style="margin-top:18px; width:100%">Run fraud → slash (live, ~2 min)</button>
+          </div>
+          <div class="card">
+            <h3>Stake at risk</h3>
+            <p class="sub">The attestor's bonded collateral, before and after the slash.</p>
+            <div class="meter" id="stakeMeter">
+              <div class="track2"><div class="bar2" id="stakeBar"></div></div>
+              <div class="lbls"><span id="stakeAfterLbl">— C2FLR</span><span id="stakeBeforeLbl">stake: — C2FLR</span></div>
+            </div>
+            <div class="console" id="fraudConsole" style="margin-top:16px"></div>
+            <div class="result" id="fraudResult">
+              <div class="bar" id="fraudResultBar"></div>
+              <div class="body" id="fraudResultBody"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================================================== how ===== -->
+      <section class="block" id="how">
+        <div class="section-head">
+          <div class="kicker">Under the hood</div>
+          <h2>Two Flare rails, one guarantee</h2>
+          <p>Neither bounty is decorative: <span class="mono">recordSolvency</span> reverts unless it receives
+             <em>both</em> a valid enclave signature <em>and</em> a valid FDC proof from the subject's approved source.</p>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h3><span class="tag private">confidential</span> The enclave</h3>
+            <p class="sub" style="margin-top:12px">The solvency check and every sensitive figure run inside a TEE
+               extension. It emits a domain-separated EIP-191 signature over the commitment; the verifier recovers the
+               signer on-chain and requires it to equal the registered enclave address — the FCC settlement pattern.</p>
+            <div class="callout"><span class="ic">⛨</span><span>Raw figures are computed and discarded in-enclave. Liabilities are committed with a secret salt and are never recoverable from the chain.</span></div>
+          </div>
+          <div class="card">
+            <h3><span class="tag interop">interoperable</span> The data + asset rails</h3>
+            <p class="sub" style="margin-top:12px">An FDC <span class="mono">Web2Json</span> proof brings the off-chain
+               reserves on-chain through the full round-trip (prepare → FdcHub → Relay → DA-layer → verify). The subject
+               is bound to a real FXRP agent vault, all resolved via <span class="mono">FlareContractRegistry</span> —
+               no hardcoded addresses.</p>
+            <div class="callout"><span class="ic">◆</span><span>The reserve proof must come from a per-subject source the owner pre-registered, so an attestor can't fabricate reserves from their own endpoint.</span></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <h3>Honest scope <span class="tag" style="background:rgba(246,198,103,.16); color:var(--warn); margin-left:auto">real vs simulated</span></h3>
+          <div class="ledger" style="margin-top:14px">
+            <div class="col on">
+              <h4 style="color:var(--ok)">✓ Real on Coston2</h4>
+              <p class="note">Verifiable on the block explorer today</p>
+              <div class="kv"><span class="k">Confidential compute + enclave signature</span><span class="v">live</span></div>
+              <div class="kv"><span class="k">On-chain ecrecover verification</span><span class="v">live</span></div>
+              <div class="kv"><span class="k">Full FDC Web2Json round-trip</span><span class="v">live</span></div>
+              <div class="kv"><span class="k">FXRP agent binding · staking · slashing</span><span class="v">live</span></div>
+            </div>
+            <div class="col off">
+              <h4 style="color:var(--warn)">◐ Simulated</h4>
+              <p class="note">Clean switch to production ready</p>
+              <div class="kv"><span class="k">The enclave itself (local process)</span><span class="v">MODE=1</span></div>
+              <div class="kv"><span class="k">Remote attestation / code-hash whitelist</span><span class="v">roadmap</span></div>
+              <div class="kv"><span class="k">TeeExtensionRegistry round-trip</span><span class="v">pending Coston2</span></div>
+              <div class="kv"><span class="k">Cryptography &amp; on-chain checks</span><span class="v">identical</span></div>
+            </div>
+          </div>
+        </div>
       </section>
     </main>
 
-    <script>
-      const $ = (id) => document.getElementById(id);
-      const asList = (s) => s.split(",").map((x) => x.trim()).filter(Boolean);
+    <!-- ================================================== footer ===== -->
+    <footer class="footer">
+      <div class="wrap row">
+        <div>
+          <div class="brand" style="font-size:15px">
+            <svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><path fill="#6d8bff" d="M12 2l8 3v6c0 5-3.4 8.6-8 11-4.6-2.4-8-6-8-11V5l8-3z"/><path fill="#fff" d="M10.6 14.3l-2.3-2.3-1.4 1.4 3.7 3.7 6.2-6.2-1.4-1.4z"/></svg>
+            Vouchsafe
+          </div>
+          <p style="margin:8px 0 0; max-width:420px">Private, stake-backed proof of solvency for RWA issuers and FAsset agents on Flare.</p>
+        </div>
+        <div class="stack">
+          <span>Solidity 0.8.25 / cancun</span><span>FDC Web2Json</span><span>FCC / TEE</span>
+          <span>FXRP</span><span>ethers v6</span><span>Coston2 · 114</span>
+        </div>
+      </div>
+    </footer>
 
-      async function doAttest() {
-        const btn = $("attestBtn"), out = $("attestOut");
-        btn.disabled = true; out.textContent = "Signing in TEE, requesting FDC proof, recording… (~2 min)";
-        try {
-          const r = await fetch("/api/attest", { method: "POST", headers: { "content-type": "application/json" },
-            body: JSON.stringify({ subject: $("subject").value, reserves: asList($("reserves").value), liabilities: asList($("liabilities").value) }) });
-          const d = await r.json();
-          if (!r.ok) throw new Error(d.error || "failed");
-          out.innerHTML = `solvent: ${d.solvent}\nattestation id: ${d.attestationId}\ninputHash: ${d.inputHash}\n` +
-            `tx: <a href="${d.explorerUrl}" target="_blank">${d.explorerUrl}</a>`;
-          $("verifyId").value = d.attestationId;
-        } catch (e) { out.textContent = "Error: " + e.message; }
-        btn.disabled = false;
-      }
+    <div class="toast" id="toast"></div>
 
-      async function doVerify() {
-        const out = $("verifyOut");
-        out.textContent = "Reading chain…";
-        try {
-          const r = await fetch("/api/attestation/" + $("verifyId").value.trim());
-          const d = await r.json();
-          if (!r.ok) throw new Error(d.error || "failed");
-          out.textContent = `subject:  ${d.subject}\nsolvent:  ${d.solvent}\nat T:     ${d.timestamp}\n` +
-            `inputHash: ${d.inputHash}\nrevoked:  ${d.revoked}\n(no reserves/liabilities on-chain)`;
-        } catch (e) { out.textContent = "Error: " + e.message; }
-      }
-
-      async function doFraud() {
-        const btn = $("fraudBtn"), out = $("fraudOut");
-        btn.disabled = true; out.textContent = "Recording a lie, then proving fraud & slashing… (~2 min)";
-        try {
-          const r = await fetch("/api/fraud", { method: "POST", headers: { "content-type": "application/json" },
-            body: JSON.stringify({ subject: $("subject").value, reserves: asList($("reserves").value), liabilities: ["2000000"] }) });
-          const d = await r.json();
-          if (!r.ok) throw new Error(d.error || "failed");
-          out.innerHTML = `fraudulent id: ${d.attestationId}\nstake: ${d.stakeBefore} → ${d.stakeAfter} C2FLR (slashed)\n` +
-            `slash tx: <a href="${d.fraudExplorerUrl}" target="_blank">${d.fraudExplorerUrl}</a>`;
-        } catch (e) { out.textContent = "Error: " + e.message; }
-        btn.disabled = false;
-      }
-    </script>
+    <script src="keccak256.js"></script>
+    <script src="app.js"></script>
   </body>
 </html>

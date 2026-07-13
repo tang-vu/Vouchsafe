@@ -25,8 +25,9 @@ backing to counterparties/regulators without publishing their full books.
 ## 5. Demo
 - `yarn demo` — unattended end-to-end on Coston2 (happy path + fraud/slash). Video: _(placeholder)_.
 - Live evidence (Coston2 explorer):
-  - Solvency recorded (TEE sig + FDC proof): [`0x3c9119e6…`](https://coston2-explorer.flare.network/tx/0x3c9119e6b6320c1ef5c2f2ccfac12b3c4f83d7463ac1fc7af304cd6c3caea414)
-  - Fraud proven → stake slashed: [`0x72c0ec03…`](https://coston2-explorer.flare.network/tx/0x72c0ec037208645883c1c2f82a837ccd0b180e58be4c08cd2d4ffe9c069c9fa8)
+  - Solvency recorded (TEE sig + FDC proof): [`0xf81b88ac…`](https://coston2-explorer.flare.network/tx/0xf81b88ac44cfd82ec971fcf12b0e2ae3e8d8ac65dc0f3cf7f9202d23855fbe51)
+  - Fraud proven → stake slashed (1.0 → 0.0 C2FLR): [`0x66f955d7…`](https://coston2-explorer.flare.network/tx/0x66f955d715b634603b4c35e6c283849634c6c132c9bcca3ccc830792107e8d8f)
+  - Frontend (3 acts: prove / verify / slash): `yarn service` → http://localhost:7900
 
 ## 6. GitHub repo
 This repository.
@@ -59,13 +60,31 @@ This repository.
 
 | Contract | Address |
 |---|---|
-| SolvencyRegistry | `0x523fb260db767c96BCc2D854215305723a13A3dC` |
-| AttestorStaking | `0x6D2E0c4AFf375e7103cc9fca0D6474A6DBb394f5` |
-| SolvencyVerifier | `0xda8429BEfF99D503416dA3a749792Decf73C451B` |
-| VouchsafeInstructionSender | `0x818b7d42f28dBc00C32FFEEd0c052b8f65869f1c` |
-| FxrpAgentBinding | `0xbF3E4fBbFe14AFba2f3468a1F020D5eE014f2fa8` |
+| SolvencyRegistry | `0x427ad9d3Cb675FC99D4fd0BCC230537D05d6A9F0` |
+| AttestorStaking | `0x6fE9C52F3aB9883Ec3b785F605DA3740754f290B` |
+| SolvencyVerifier | `0xBBB69428F3C51E4D7A335C39227e28B0a7EE321A` |
+| VouchsafeInstructionSender | `0xF12c76AAa891bb7092B23F721319575605892cc4` |
+| FxrpAgentBinding | `0x99E3080F803C81a2A03A4570712693B756D329Cf` |
 
-Compiler: solc `0.8.25`, EVM `cancun`, optimizer 200 runs. Addresses also in `contracts/deployments/coston2.json`.
+Compiler: solc `0.8.25`, EVM `cancun`, optimizer 200 runs. All five **source-verified** on the Coston2 Blockscout
+explorer (`#code` tab). Addresses also in `contracts/deployments/coston2.json`.
+
+## 12. Security review &amp; hardening
+An adversarial review (report in `plans/reports/`) confirmed the signature layer sound (chain+contract-bound
+digest, no cross-chain replay, no malleability; TS/Solidity digests byte-match) and drove these fixes:
+- **FDC bound to an owner-registered per-subject source** — an attestor can no longer fabricate reserves from
+  their own endpoint (`reservesSourceHash` + URL check).
+- **Fraud uses the committed reserves, not a fresh proof** — post-recording reserve drift can't shield a lie;
+  `raiseFraud` verifies the reveal against the stored `inputHash` alone.
+- **Slashing covers unbonding funds and never reverts on zero** — an attestor can't dodge a slash by unstaking,
+  and revocation always applies.
+- **Recent-timestamp bound**, **CSPRNG nonce/salt**, **no trapped value in simulated mode**, **lockable FDC override**.
+
+### Known limitations (by design / roadmap)
+- **Fraud proof needs the committed `(reserves, liabilities, salt)` to be disclosed** by a party who knows them
+  (auditor/counterparty) — the intended RWA model, not fully trustless. A ZK opening is future work.
+- FDC proof freshness (≤14-day window) is not yet enforced; owner is trusted (production wants multisig/timelock).
+- The public `/api/fraud` demo endpoint spends the service's own stake — demo-only.
 
 ## 10. What is real vs. simulated
 Real on Coston2: confidential computation, TEE signature + on-chain `ecrecover`, the full FDC round-trip, FXRP agent

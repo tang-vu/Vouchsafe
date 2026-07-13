@@ -5,6 +5,8 @@ Interoperable Asset Products (FXRP + FDC) and Confidential Compute Apps (FCC/TEE
 
 **One line:** prove you can cover your liabilities without revealing your books, and lose your stake if you lied.
 
+**Status: all 5 phases complete — deployed and demonstrated live on Coston2 (`yarn demo` passes end-to-end).**
+
 ## Locked decisions (user-approved)
 - **FCC depth:** Hybrid — TEE extension in *simulated* mode (free, unattended) **+** a real `InstructionSender`
   registered on `TeeExtensionRegistry` (Coston2) for genuine on-chain FCC footprint; MODE=0 Confidential-Space

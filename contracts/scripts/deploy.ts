@@ -46,6 +46,13 @@ async function main() {
   const senderAddress = await sender.getAddress();
   console.log(`InstructionSender: ${senderAddress}`);
 
+  // FAsset binding reader (resolves FXRP AssetManager + agent metadata via the registry).
+  const Binding = await ethers.getContractFactory("FxrpAgentBinding");
+  const binding = await Binding.deploy();
+  await binding.waitForDeployment();
+  const bindingAddress = await binding.getAddress();
+  console.log(`FxrpAgentBinding:  ${bindingAddress}`);
+
   // --- wire roles ---
   await (await registry.setVerifier(verifierAddress)).wait();
   await (await staking.setSlasher(verifierAddress)).wait();
@@ -61,6 +68,7 @@ async function main() {
       AttestorStaking: stakingAddress,
       SolvencyVerifier: verifierAddress,
       VouchsafeInstructionSender: senderAddress,
+      FxrpAgentBinding: bindingAddress,
     },
     params: {
       minStake: minStake.toString(),
@@ -82,6 +90,7 @@ async function main() {
     console.log(`  ${base}${stakingAddress}`);
     console.log(`  ${base}${verifierAddress}`);
     console.log(`  ${base}${senderAddress}`);
+    console.log(`  ${base}${bindingAddress}`);
   }
 }
 

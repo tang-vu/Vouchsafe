@@ -7,8 +7,7 @@
   "scripts": {
     "build": "tsc",
     "start": "ts-node src/index.ts",
-    "self-test": "ts-node src/self-test.ts",
-    "prove-and-record": "ts-node src/prove-and-record.ts"
+    "self-test": "ts-node src/self-test.ts"
   },
   "dependencies": {
     "dotenv": "^16.4.7",

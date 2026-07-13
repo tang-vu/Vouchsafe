@@ -3,10 +3,11 @@
   "chainId": 114,
   "deployer": "0x18e0C3282F6a1cE0a4813c1b9Da005244be593D7",
   "contracts": {
-    "SolvencyRegistry": "0x8487DaceB904de4d41cc4C60298B13F2006019bb",
-    "AttestorStaking": "0xCf9F0e20AC9D235d34153747e65379537a89c927",
-    "SolvencyVerifier": "0x0B83228F3b32CBF29D0aab6B7eb32d09FBF02bd0",
-    "VouchsafeInstructionSender": "0x4FaBf2B2144783Fca75fF03b3eC37d1507C71366"
+    "SolvencyRegistry": "0x523fb260db767c96BCc2D854215305723a13A3dC",
+    "AttestorStaking": "0x6D2E0c4AFf375e7103cc9fca0D6474A6DBb394f5",
+    "SolvencyVerifier": "0xda8429BEfF99D503416dA3a749792Decf73C451B",
+    "VouchsafeInstructionSender": "0x818b7d42f28dBc00C32FFEEd0c052b8f65869f1c",
+    "FxrpAgentBinding": "0xbF3E4fBbFe14AFba2f3468a1F020D5eE014f2fa8"
   },
   "params": {
     "minStake": "1000000000000000000",
@@ -14,5 +15,5 @@
     "challengeWindow": 86400,
     "slashPenalty": "1000000000000000000"
   },
-  "timestamp": "2026-07-13T11:25:23.256Z"
+  "timestamp": "2026-07-13T11:42:29.228Z"
 }

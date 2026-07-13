@@ -4,56 +4,59 @@ pragma solidity 0.8.25;
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import {IWeb2Json} from "@flarenetwork/flare-periphery-contracts/coston2/IWeb2Json.sol";
+import {ContractRegistry} from "@flarenetwork/flare-periphery-contracts/coston2/ContractRegistry.sol";
 import {ISolvencyRegistry} from "./interfaces/ISolvencyRegistry.sol";
 import {IAttestorStaking} from "./interfaces/IAttestorStaking.sol";
+import {IWeb2JsonVerifier} from "./interfaces/IWeb2JsonVerifier.sol";
+
+/// @dev Shape of the FDC-attested reserves payload (the endpoint returns a single reserves total).
+struct DataTransportObject {
+    uint256 reserves;
+}
 
 /**
  * @title SolvencyVerifier
- * @notice Gates recording a solvency attestation. It verifies that the assertion was produced and
- *         signed inside the registered TEE (the confidential-compute half), enforces the attestor's
- *         stake, records the attestation, and locks the stake for a challenge window.
- * @dev The TEE signs a domain-separated digest of the claim with its enclave key; this contract
- *      recovers the signer and requires it to equal `teeAddress`. This mirrors the Flare Confidential
- *      Compute settlement pattern (recover the TEE signer and require it equals the registered TEE
- *      address) used by fce-weather-insurance, adapted with an EIP-191 domain-separated digest so the
- *      signature is bound to this chain and this verifier. The FDC reserve-proof requirement is layered
- *      on this same surface subsequently.
+ * @notice Records a solvency attestation only when BOTH halves check out:
+ *         1. Confidential compute: the assertion was signed inside the registered TEE
+ *            (`ecrecover == teeAddress`), mirroring the Flare FCC settlement pattern.
+ *         2. Interoperable data: an FDC Web2Json proof attests the off-chain reserves, and that
+ *            attested figure is bound to the TEE claim via `reservesCommitment`.
+ *         The attestor's stake backs the assertion and is slashed by an evidence-based fraud challenge.
+ * @dev Raw reserves/liabilities never appear on-chain; only commitments and the boolean result do.
+ *      The FDC verifier is resolved via `ContractRegistry.getFdcVerification()` in production, with an
+ *      owner-settable override so unit tests can inject a mock.
  */
 contract SolvencyVerifier is Ownable {
     using MessageHashUtils for bytes32;
 
-    /// @dev Domain tag binding a signature to the Vouchsafe solvency-attestation scheme + version.
     string public constant DOMAIN = "VOUCHSAFE_SOLVENCY_V1";
 
-    /// @dev The claim signed by the TEE and recorded on-chain. Raw figures never appear here — only
-    ///      the commitments produced inside the enclave.
     struct SolvencyClaim {
         address subject;
-        bytes32 inputHash; // keccak256(abi.encode(reserves, liabilities, salt))
-        bytes32 reservesCommitment; // keccak256(abi.encode(totalReserves, salt))
-        bool solvent; // reserves >= liabilities
-        uint64 timestamp; // assertion time T, as evaluated inside the enclave
-        uint256 nonce; // unique per assertion; replay guard
+        bytes32 inputHash; // keccak256(abi.encode(totalReserves, totalLiabilities, salt))
+        bytes32 reservesCommitment; // keccak256(abi.encode(totalReserves))
+        bool solvent;
+        uint64 timestamp;
+        uint256 nonce;
     }
 
     ISolvencyRegistry public immutable registry;
     IAttestorStaking public immutable staking;
 
-    /// @notice Registered TEE signer address whose signature authenticates a claim.
     address public teeAddress;
-
-    /// @notice Seconds an attestor's stake stays locked after an assertion, allowing a fraud challenge.
     uint64 public challengeWindow;
-
-    /// @notice Default amount slashed on a proven fraud.
     uint256 public slashPenalty;
 
-    /// @notice Consumed nonces, preventing replay of a signed attestation.
+    /// @notice Test-only override for the FDC verifier. Zero => resolve via ContractRegistry.
+    address public fdcVerifierOverride;
+
     mapping(uint256 => bool) public usedNonce;
 
     event TeeAddressUpdated(address indexed teeAddress);
+    event FdcVerifierOverrideUpdated(address indexed verifier);
     event SolvencyRecorded(bytes32 indexed id, address indexed subject, address indexed attestor, uint64 timestamp);
-    event FraudProven(bytes32 indexed id, address indexed attestor, uint256 slashed);
+    event FraudProven(bytes32 indexed id, address indexed attestor, address indexed challenger, uint256 slashed);
 
     constructor(
         ISolvencyRegistry _registry,
@@ -82,10 +85,13 @@ contract SolvencyVerifier is Ownable {
         slashPenalty = _penalty;
     }
 
+    function setFdcVerifierOverride(address _override) external onlyOwner {
+        fdcVerifierOverride = _override;
+        emit FdcVerifierOverrideUpdated(_override);
+    }
+
     // --- signature scheme ---
 
-    /// @notice The domain-separated digest the TEE signs (pre EIP-191 prefix). Exposed for off-chain
-    ///         signers and frontends so both sides derive the identical message.
     function claimDigest(SolvencyClaim calldata claim) public view returns (bytes32) {
         return
             keccak256(
@@ -103,25 +109,42 @@ contract SolvencyVerifier is Ownable {
             );
     }
 
-    /// @notice Recover the signer of a claim under the EIP-191 personal-sign scheme.
     function recoverSigner(SolvencyClaim calldata claim, bytes calldata signature) public view returns (address) {
-        bytes32 ethSigned = claimDigest(claim).toEthSignedMessageHash();
-        return ECDSA.recover(ethSigned, signature);
+        return ECDSA.recover(claimDigest(claim).toEthSignedMessageHash(), signature);
+    }
+
+    // --- FDC verifier resolution ---
+
+    function fdcVerifier() public view returns (IWeb2JsonVerifier) {
+        if (fdcVerifierOverride != address(0)) return IWeb2JsonVerifier(fdcVerifierOverride);
+        return IWeb2JsonVerifier(address(ContractRegistry.getFdcVerification()));
+    }
+
+    function _attestedReserves(IWeb2Json.Proof calldata fdcProof) internal view returns (uint256) {
+        require(fdcVerifier().verifyWeb2Json(fdcProof), "SolvencyVerifier: bad FDC proof");
+        DataTransportObject memory dto = abi.decode(fdcProof.data.responseBody.abiEncodedData, (DataTransportObject));
+        return dto.reserves;
     }
 
     // --- core ---
 
     /**
-     * @notice Record a solvency attestation for `msg.sender` (the accountable attestor).
-     * @param claim        The solvency claim, as computed and signed inside the TEE.
-     * @param teeSignature The enclave signature over `claimDigest(claim)` (EIP-191).
+     * @notice Record a solvency attestation. Requires a valid TEE signature AND a valid FDC reserves
+     *         proof whose attested reserves total matches the claim's `reservesCommitment`.
      */
-    function recordSolvency(SolvencyClaim calldata claim, bytes calldata teeSignature) external returns (bytes32 id) {
+    function recordSolvency(
+        SolvencyClaim calldata claim,
+        bytes calldata teeSignature,
+        IWeb2Json.Proof calldata fdcProof
+    ) external returns (bytes32 id) {
         require(teeAddress != address(0), "SolvencyVerifier: tee not set");
         require(staking.stakeOf(msg.sender) >= staking.minStake(), "SolvencyVerifier: insufficient stake");
         require(!usedNonce[claim.nonce], "SolvencyVerifier: nonce used");
         require(claim.solvent, "SolvencyVerifier: not solvent");
         require(recoverSigner(claim, teeSignature) == teeAddress, "SolvencyVerifier: bad TEE signature");
+
+        uint256 reserves = _attestedReserves(fdcProof);
+        require(keccak256(abi.encode(reserves)) == claim.reservesCommitment, "SolvencyVerifier: reserves mismatch");
 
         usedNonce[claim.nonce] = true;
 
@@ -144,14 +167,31 @@ contract SolvencyVerifier is Ownable {
     }
 
     /**
-     * @notice Placeholder fraud path: revoke an attestation and slash its attestor.
-     * @dev Owner-gated for now; superseded by an evidence-based challenge (commitment reveal + FDC
-     *      counter-proof of insolvency) that anyone can call. Kept here so the slash wiring is exercised
-     *      end-to-end from the verifier.
+     * @notice Prove a recorded attestation was fraudulent and slash its attestor. Permissionless.
+     * @dev The challenger reveals the committed `liabilities` + `salt` and supplies an FDC proof of the
+     *      actual reserves. If the reveal opens the recorded `inputHash` (proving these are the exact
+     *      committed figures) and the attested reserves are below the committed liabilities, then the
+     *      "solvent" assertion was false. The slashed stake is paid to the challenger.
      */
-    function adminProveFraud(bytes32 id, address attestor, address beneficiary) external onlyOwner {
+    function raiseFraud(
+        bytes32 id,
+        uint256 liabilities,
+        bytes32 salt,
+        IWeb2Json.Proof calldata fdcProof
+    ) external {
+        ISolvencyRegistry.SolvencyAttestation memory att = registry.getAttestation(id);
+        require(!att.revoked, "SolvencyVerifier: already revoked");
+
+        uint256 reserves = _attestedReserves(fdcProof);
+        require(
+            keccak256(abi.encode(reserves, liabilities, salt)) == att.inputHash,
+            "SolvencyVerifier: reveal mismatch"
+        );
+        require(reserves < liabilities, "SolvencyVerifier: not insolvent");
+
         registry.markRevoked(id);
-        staking.slash(attestor, slashPenalty, beneficiary);
-        emit FraudProven(id, attestor, slashPenalty);
+        staking.slash(att.attestor, slashPenalty, msg.sender);
+
+        emit FraudProven(id, att.attestor, msg.sender, slashPenalty);
     }
 }

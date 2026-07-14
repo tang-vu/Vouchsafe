@@ -1,6 +1,6 @@
 # Vouchsafe — Development Roadmap
 
-## Status: hackathon build complete — deployed and demonstrated live on Coston2
+## Status: hackathon build + post-hackathon quorum build complete — deployed and demonstrated live on Coston2
 
 ### Delivered (Phases 1–5)
 - [x] **Phase 1** — Monorepo + `SolvencyRegistry` / `AttestorStaking` / `SolvencyVerifier`; 19 unit tests; Coston2 deploy.
@@ -17,13 +17,24 @@
 - [x] Tests pass (24); contracts deployed + verified on Coston2 with addresses in SUBMISSION.md.
 - [x] SUBMISSION.md honestly separates new work from starter/skill-provided work.
 
+### Delivered (Phase 6 — post-hackathon quorum build, 14 Jul 2026)
+- [x] Multi-attestor **quorum**: `endorse(id)` puts independent stake behind a claim; `raiseFraud` slashes the
+  recorder **and** every endorser; `isQuorate` finality signal. 14 new unit tests (44 total).
+- [x] **Per-subject policy** (`SubjectPolicy`): configurable stake floor, slash penalty, and required
+  endorsements per issuer; global fallback.
+- [x] **Attestation history** without an external indexer: event-scan API (`GET /api/attestations`) from the
+  deployment `startBlock`, joined with live quorum state.
+- [x] **Wallet-connect frontend** (Act IV): MetaMask connect + Coston2 auto-add, stake + endorse from the
+  browser; service-endorser fallback (`POST /api/endorse`); history table.
+- [x] Redeployed + explorer-verified on Coston2; `yarn demo` now exercises happy + quorum + fraud paths.
+
 ## Next (post-hackathon)
 - [ ] Real GCP **Confidential Space (MODE=0)**: reproducible build, TEE registration, code-hash whitelisting, then flip `setTeeAddress` + point `VouchsafeInstructionSender` at the live `TeeExtensionRegistry`.
 - [ ] **XRPPayment** FDC attestation type for XRPL-native reserve proofs (alongside Web2Json).
-- [ ] Multi-attestor **quorum**; per-issuer configurable stake + penalty; unbonding/lock parameter tuning.
+- [ ] Unbonding/lock parameter tuning informed by real challenge-latency data.
 - [ ] **Privacy on reserves too** — range-proof / ZK option so the reserves figure (not just liabilities) stays hidden.
 - [ ] Mainnet FXRP; integrate with agent tooling; production verifier/DA-layer API keys.
-- [ ] Frontend polish + wallet-connect for real issuer submission; subgraph/indexer for attestation history.
+- [ ] Subgraph for cross-deployment attestation history (the event-scan API covers a single deployment).
 
 ## Known limitations
 - `TeeExtensionRegistry` is not yet published in the Coston2 `FlareContractRegistry`, so the full on-chain FCC

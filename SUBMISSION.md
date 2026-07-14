@@ -28,8 +28,8 @@ backing to counterparties/regulators without publishing their full books.
 ## 5. Demo
 - `yarn demo` — unattended end-to-end on Coston2 (happy path + quorum endorsement + fraud/slash).
 - `yarn demo:xrpl` — XRPL-native rail: real XRPL testnet challenge payment → FDC Payment proof → on-chain record.
-- Video: **produced** — `vouchsafe-demo.mp4` (3:02, 1080p, narrated, subtitles in `vouchsafe-demo.srt`; captured
-  from the live UI incl. the real-enclave Act I and the on-chain slash). Upload to YouTube and paste the link here.
+- Video: **https://youtu.be/1t-Nm9hdITs** (3:02, 1080p, narrated + English subtitles; captured from the live UI
+  incl. the real-enclave Act I and the on-chain slash).
 - Live evidence (Coston2 explorer, v2 deployment):
   - Solvency recorded (TEE sig + FDC proof): [`0xb453bf85…`](https://coston2-explorer.flare.network/tx/0xb453bf855e2fdeff63f1c9701e1246b52a710aca11b76d09efd6799bc099df2a)
   - Quorum endorsement (independent stake, `quorate` false → true): [`0x4d632ff3…`](https://coston2-explorer.flare.network/tx/0x4d632ff3803de7b51d8bdfa784c397c86c71f90cd7fc931b94c09578e4a7dd03)

@@ -29,6 +29,9 @@ export const config = {
   apiKey: process.env.VERIFIER_API_KEY_TESTNET ?? "",
   daLayerUrl: process.env.COSTON2_DA_LAYER_URL ?? "",
   port: Number(process.env.ATTESTOR_SERVICE_PORT ?? 7900),
+  // Remote enclave endpoint (e.g. a GCP Confidential Space VM). When set, the orchestrator sends
+  // /action requests there instead of starting the in-process simulated extension.
+  extensionUrl: (process.env.TEE_EXTENSION_URL ?? "").replace(/\/$/, ""),
   // Public-demo hosting: disables every endpoint that spends the server's own key/stake.
   // Reads + MetaMask (user-side) transactions keep working.
   readOnly: /^(1|true)$/i.test(process.env.READ_ONLY ?? ""),

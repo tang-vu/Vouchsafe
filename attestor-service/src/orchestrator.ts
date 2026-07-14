@@ -48,10 +48,27 @@ async function startExtension(signer: TeeSigner): Promise<{ url: string; close: 
   return { url: `http://localhost:${port}`, close: () => server.close() };
 }
 
-/** Ensure the verifier knows the TEE signer and the attestor is staked. */
-async function ensureSetup(verifier: Contract, staking: Contract, signer: TeeSigner, wallet: Wallet) {
-  if ((await verifier.teeAddress()).toLowerCase() !== signer.address.toLowerCase()) {
-    await (await verifier.setTeeAddress(signer.address)).wait();
+/**
+ * Resolve the enclave endpoint: a remote one (TEE_EXTENSION_URL, e.g. GCP Confidential Space —
+ * its signer address is read from /pubkey) or the in-process simulated extension.
+ */
+async function extensionEndpoint(
+  signer: TeeSigner
+): Promise<{ url: string; close: () => void; teeAddress: string }> {
+  if (config.extensionUrl) {
+    const r = await fetch(`${config.extensionUrl}/pubkey`);
+    if (!r.ok) throw new Error(`remote enclave unreachable: ${config.extensionUrl} (${r.status})`);
+    const d = (await r.json()) as { teeAddress: string };
+    return { url: config.extensionUrl, close: () => {}, teeAddress: d.teeAddress };
+  }
+  const ext = await startExtension(signer);
+  return { ...ext, teeAddress: signer.address };
+}
+
+/** Ensure the verifier trusts `teeAddress` and the attestor is staked. */
+async function ensureSetup(verifier: Contract, staking: Contract, teeAddress: string, wallet: Wallet) {
+  if ((await verifier.teeAddress()).toLowerCase() !== teeAddress.toLowerCase()) {
+    await (await verifier.setTeeAddress(teeAddress)).wait();
   }
   const minStake: bigint = await staking.minStake();
   if ((await staking.stakeOf(wallet.address)) < minStake) {
@@ -93,7 +110,7 @@ export async function attest(input: AttestInput, log: Logger = console.log): Pro
   const wallet = new Wallet(config.privateKey, p);
   const signer = makeSigner();
 
-  const ext = await startExtension(signer);
+  const ext = await extensionEndpoint(signer);
   let attestation: any;
   try {
     const body = {
@@ -125,7 +142,7 @@ export async function attest(input: AttestInput, log: Logger = console.log): Pro
 
   const verifier = new Contract(config.addresses.SolvencyVerifier, VERIFIER_ABI, wallet);
   const staking = new Contract(config.addresses.AttestorStaking, STAKING_ABI, wallet);
-  await ensureSetup(verifier, staking, signer, wallet);
+  await ensureSetup(verifier, staking, ext.teeAddress, wallet);
   await ensureReservesSource(verifier, attestation.subject);
 
   const claim = {
@@ -165,6 +182,11 @@ export interface FraudResult {
  * FDC proof) and the stake is slashed. `reserves` must equal the public reserves endpoint value.
  */
 export async function commitFraud(input: AttestInput, log: Logger = console.log): Promise<FraudResult> {
+  // A real enclave refuses to sign a false claim, so the fraud act only exists in simulated mode —
+  // it plays a compromised/colluding enclave key. Refuse rather than silently re-point teeAddress.
+  if (config.extensionUrl) {
+    throw new Error("fraud demo needs simulated mode (unset TEE_EXTENSION_URL): a real enclave will not sign a lie");
+  }
   const p = provider();
   const wallet = new Wallet(config.privateKey, p);
   const signer = makeSigner();
@@ -195,7 +217,7 @@ export async function commitFraud(input: AttestInput, log: Logger = console.log)
 
   const verifier = new Contract(config.addresses.SolvencyVerifier, VERIFIER_ABI, wallet);
   const staking = new Contract(config.addresses.AttestorStaking, STAKING_ABI, wallet);
-  await ensureSetup(verifier, staking, signer, wallet);
+  await ensureSetup(verifier, staking, signer.address, wallet);
   await ensureReservesSource(verifier, input.subject);
 
   const claim = { subject: input.subject, inputHash, reservesCommitment, solvent: true, timestamp, nonce };

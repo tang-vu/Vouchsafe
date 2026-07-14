@@ -59,8 +59,23 @@ Then flip the trust root on Coston2 (owner key):
 # All subsequent recordSolvency calls now require signatures born inside the real enclave.
 ```
 
-Point the attestor-service at the enclave endpoint instead of the in-process extension
-(`http://<VM_IP>:7800/action`) and run the normal demo.
+Point the attestor-service at the enclave and run the normal demo — one line in `.env`:
+
+```bash
+TEE_EXTENSION_URL=http://<VM_IP>:7800   # orchestrator now signs inside the real enclave
+yarn demo                                # records solvency with an enclave-born signature
+```
+
+The service reads the enclave's address from `/pubkey` and registers it via `setTeeAddress`
+automatically. The fraud act intentionally refuses to run in this mode — a real enclave will not
+sign a false claim (unset `TEE_EXTENSION_URL` and `setTeeAddress` back to the simulated key to
+demo it again).
+
+**One session is enough for permanent evidence.** The `recordSolvency` transaction (signed by the
+enclave-born key) lives on-chain forever, and the saved attestation token + image digest prove the
+enclave context. Suggested order: deploy → `curl /attestation` (save the token) → `yarn demo` →
+record the video segment → save explorer links into SUBMISSION.md → teardown. Total cost well
+under $1.
 
 ## Teardown
 

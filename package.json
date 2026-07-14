@@ -15,7 +15,8 @@
     "deploy:coston2": "yarn workspace @vouchsafe/contracts deploy:coston2",
     "build:tee": "yarn workspace @vouchsafe/tee-extension build",
     "service": "yarn build:tee && yarn workspace @vouchsafe/attestor-service start",
-    "demo": "yarn build:tee && yarn workspace @vouchsafe/attestor-service demo"
+    "demo": "yarn build:tee && yarn workspace @vouchsafe/attestor-service demo",
+    "demo:xrpl": "yarn build:tee && yarn workspace @vouchsafe/attestor-service demo:xrpl"
   },
   "license": "MIT"
 }

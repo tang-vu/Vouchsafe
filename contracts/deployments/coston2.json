@@ -8,7 +8,8 @@
     "AttestorStaking": "0x24d5f0B559E84d50f651b7e45577Baf638978e1E",
     "SolvencyVerifier": "0x59b044B0a2d17FE10336367B1d9f25C6DcB76686",
     "VouchsafeInstructionSender": "0x38e53EF3eF09BE3cF0C10Fdbb36c702747F32FfE",
-    "FxrpAgentBinding": "0xc98F898f4717879237FB5eB5d82afe7BFD874ccc"
+    "FxrpAgentBinding": "0xc98F898f4717879237FB5eB5d82afe7BFD874ccc",
+    "XrplReserveProof": "0x878Fe3305cC23aDfa6CfF10E1B9e811e9A2Ac9f0"
   },
   "params": {
     "minStake": "1000000000000000000",
@@ -16,5 +17,5 @@
     "challengeWindow": 86400,
     "slashPenalty": "1000000000000000000"
   },
-  "timestamp": "2026-07-14T01:56:38.283Z"
+  "timestamp": "2026-07-14T03:57:02.844Z"
 }

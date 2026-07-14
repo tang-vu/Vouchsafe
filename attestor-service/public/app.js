@@ -329,6 +329,48 @@
     }
   }
 
+  // Act V: XRPL-native reserve-address control status (XrplReserveProof + FDC Payment).
+  async function doXrplCheck() {
+    const subject = $("xrplSubject").value.trim();
+    if (!/^0x[0-9a-fA-F]{40}$/.test(subject)) return toast("Enter a valid subject address");
+    const res = $("xrplResult");
+    res.className = "result show";
+    $("xrplBody").innerHTML = `<div class="muted">Reading XrplReserveProof on Coston2…</div>`;
+    try {
+      const r = await fetch("/api/xrpl-proof/" + subject);
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "lookup failed");
+      const when = d.provenAt ? new Date(d.provenAt * 1000).toISOString().replace("T", " ").slice(0, 19) + " UTC" : "—";
+      const cls = d.proven ? "solvent" : "revoked";
+      const big = d.proven ? "XRPL CONTROL PROVEN" : "NO PROOF YET";
+      $("xrplBody").innerHTML = `
+        <div class="verdict ${cls}">
+          <div class="big">${big}</div>
+          <div class="t">${d.proven
+            ? "The subject answered the on-chain challenge from its registered XRP reserve address, attested by FDC."
+            : "No FDC-attested challenge payment recorded for this subject."}</div>
+        </div>
+        <div class="ledger">
+          <div class="col on">
+            <h4>◆ On-chain record</h4>
+            <p class="note">XrplReserveProof state for this subject</p>
+            <div class="kv"><span class="k">XRP reserve address</span><span class="v">${d.xrplAddress ?? "not registered"}</span></div>
+            <div class="kv"><span class="k">proven at</span><span class="v">${when}</span></div>
+            <div class="kv"><span class="k">fresh (24h)</span><span class="v" style="color:${d.freshWithin24h ? "var(--ok)" : "var(--warn)"}">${d.freshWithin24h}</span></div>
+            ${d.xrplExplorerUrl ? `<div class="kv"><span class="k">XRPL payment</span><span class="v"><a href="${d.xrplExplorerUrl}" target="_blank" rel="noopener">view on testnet.xrpl.org ↗</a></span></div>` : ""}
+          </div>
+          <div class="col off">
+            <h4>▲ How it works</h4>
+            <p class="note">Challenge → memo payment → FDC Payment proof</p>
+            <div class="kv"><span class="k">challenge ref</span><span class="v">bound to chain + contract + subject + nonce</span></div>
+            <div class="kv"><span class="k">verified by</span><span class="v">FdcVerification.verifyPayment</span></div>
+          </div>
+        </div>`;
+    } catch (e) {
+      $("xrplBody").innerHTML = `<div class="muted" style="color:var(--bad)">✕ ${e.message}</div>`;
+    }
+  }
+
   async function doFraud() {
     const btn = $("fraudBtn");
     const rTokens = sumTokens($("reserves").value);
@@ -395,7 +437,16 @@
       pill.className = "net-pill live";
       text.textContent = `Coston2 · chain ${d.chainId}`;
       const a = d.addresses || {};
-      const order = ["SolvencyVerifier", "AttestorStaking", "SolvencyRegistry", "FxrpAgentBinding", "VouchsafeInstructionSender"];
+      if (d.demoSubject && !$("xrplSubject").value) $("xrplSubject").value = d.demoSubject;
+      if (d.readOnly) {
+        $("readonlyBanner").style.display = "";
+        ["attestBtn", "fraudBtn"].forEach((id) => {
+          const b = $(id);
+          b.disabled = true;
+          b.title = "Disabled on the public read-only demo — run locally with yarn service";
+        });
+      }
+      const order = ["SolvencyVerifier", "AttestorStaking", "SolvencyRegistry", "XrplReserveProof", "FxrpAgentBinding", "VouchsafeInstructionSender"];
       const chips = order.filter((k) => a[k]).map((k) => `
         <span class="chip">
           <span class="k">${k.replace(/([A-Z])/g, " $1").trim()}</span>
@@ -419,6 +470,7 @@
     $("attestBtn").onclick = doAttest;
     $("verifyBtn").onclick = doVerify;
     $("fraudBtn").onclick = doFraud;
+    $("xrplBtn").onclick = doXrplCheck;
 
     // deep link: /?id=0x... prefills + verifies
     const qp = new URLSearchParams(location.search).get("id");

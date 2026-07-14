@@ -5,5 +5,7 @@ export { handleProveSolvency } from "./action-handler";
 export { computeSolvency } from "./solvency-compute";
 export { proveReserves } from "./fdc-reserves";
 export type { Web2JsonProof, ProveReservesOptions } from "./fdc-reserves";
+export { provePayment } from "./fdc-payment";
+export type { PaymentProof, ProvePaymentOptions } from "./fdc-payment";
 export { config as teeConfig, OP_TYPE_SOLVENCY, OP_COMMAND_PROVE, DOMAIN } from "./config";
 export type { ProveSolvencyRequest, SolvencyAttestationResult } from "./types";

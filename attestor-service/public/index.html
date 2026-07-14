@@ -27,6 +27,7 @@
           <a href="#verify">Verify</a>
           <a href="#accountability">Accountability</a>
           <a href="#quorum">Quorum</a>
+          <a href="#xrpl">XRPL</a>
           <a href="#how">How it works</a>
           <button class="btn sm ghost" id="walletBtn" title="Connect a browser wallet (Coston2)">Connect wallet</button>
           <span class="net-pill" id="netPill"><span class="net-dot"></span><span id="netText">connecting…</span></span>
@@ -52,6 +53,12 @@
         <span class="bounty"><b>Confidential Compute Apps</b> — TEE compute + on-chain ecrecover</span>
       </div>
       <div class="chips" id="addrChips"><span class="chip"><span class="k">loading contracts…</span></span></div>
+      <div class="callout" id="readonlyBanner" style="display:none; margin-top:16px">
+        <span class="ic">◉</span>
+        <span><b>Public read-only demo.</b> On-chain history, verification, and MetaMask actions are live;
+        the issuer/fraud write paths need a local run (<span class="mono">yarn service</span>) so no server key
+        is exposed here.</span>
+      </div>
     </header>
 
     <main class="wrap">
@@ -300,6 +307,28 @@
         </div>
       </section>
 
+      <!-- =================================================== xrpl ===== -->
+      <section class="block" id="xrpl">
+        <div class="section-head">
+          <div class="kicker">Act V · The XRPL rail</div>
+          <h2>XRPL-native reserve proof <span class="tag interop">FDC Payment</span></h2>
+          <p>Reserves for FXRP agents live on the XRP Ledger. Alongside the Web2Json amount proof, a subject
+             proves it <b>controls its registered XRP reserve address</b>: it answers a contract-derived challenge
+             with a 1-drop XRPL payment whose memo carries the challenge reference, FDC attests the payment, and
+             <span class="mono">XrplReserveProof.proveControl</span> verifies everything on-chain — no custodian API in the loop.</p>
+        </div>
+        <div class="card">
+          <label>Subject</label>
+          <div style="display:flex; gap:8px; flex-wrap:wrap">
+            <input id="xrplSubject" type="text" placeholder="0x… (defaults to the demo attestor)" style="flex:1; min-width:240px" />
+            <button class="btn" id="xrplBtn">Check XRPL control</button>
+          </div>
+          <div class="result" id="xrplResult">
+            <div class="body" id="xrplBody"></div>
+          </div>
+        </div>
+      </section>
+
       <!-- ==================================================== how ===== -->
       <section class="block" id="how">
         <div class="section-head">
@@ -320,8 +349,9 @@
             <h3><span class="tag interop">interoperable</span> The data + asset rails</h3>
             <p class="sub" style="margin-top:12px">An FDC <span class="mono">Web2Json</span> proof brings the off-chain
                reserves on-chain through the full round-trip (prepare → FdcHub → Relay → DA-layer → verify). The subject
-               is bound to a real FXRP agent vault, all resolved via <span class="mono">FlareContractRegistry</span> —
-               no hardcoded addresses.</p>
+               is bound to a real FXRP agent vault, and an FDC <span class="mono">Payment</span> proof adds an
+               XRPL-native reserve-address control check — all resolved via
+               <span class="mono">FlareContractRegistry</span>, no hardcoded addresses.</p>
             <div class="callout"><span class="ic">◆</span><span>The reserve proof must come from a per-subject source the owner pre-registered, so an attestor can't fabricate reserves from their own endpoint.</span></div>
           </div>
         </div>
@@ -340,7 +370,7 @@
               <h4 style="color:var(--warn)">◐ Simulated</h4>
               <p class="note">Clean switch to production ready</p>
               <div class="kv"><span class="k">The enclave itself (local process)</span><span class="v">MODE=1</span></div>
-              <div class="kv"><span class="k">Remote attestation / code-hash whitelist</span><span class="v">roadmap</span></div>
+              <div class="kv"><span class="k">Remote attestation (Confidential Space)</span><span class="v">1-command deploy</span></div>
               <div class="kv"><span class="k">TeeExtensionRegistry round-trip</span><span class="v">pending Coston2</span></div>
               <div class="kv"><span class="k">Cryptography &amp; on-chain checks</span><span class="v">identical</span></div>
             </div>

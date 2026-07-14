@@ -23,6 +23,7 @@ async function main() {
     },
     { name: "VouchsafeInstructionSender", address: c.VouchsafeInstructionSender, args: ["0x0000000000000000000000000000000000000000"] },
     { name: "FxrpAgentBinding", address: c.FxrpAgentBinding, args: [] },
+    { name: "XrplReserveProof", address: c.XrplReserveProof, args: [] },
   ];
 
   for (const j of jobs) {

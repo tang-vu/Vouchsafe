@@ -1,9 +1,11 @@
 import { attest, commitFraud, readAttestation } from "./orchestrator";
+import { endorseAttestation, ensureQuorumPolicy } from "./quorum-endorser";
 
 /**
  * Unattended end-to-end demo on Coston2:
  *   1. HAPPY PATH  — prove solvency privately; record with TEE signature + FDC reserve proof.
- *   2. FRAUD PATH  — a malicious attestor lies (insolvent); the fraud is proven and the stake slashed.
+ *   2. QUORUM      — a second, independently staked attestor endorses the record until quorum.
+ *   3. FRAUD PATH  — a malicious attestor lies (insolvent); the fraud is proven and the stake slashed.
  * `reserves` must sum to the value the public RESERVES_URL returns (the demo gist = 1,500,000).
  */
 const AGENT_VAULT = "0x5b89514d1F060AdbEA8B7294AFf81ed8dbAa7fC5"; // a real Coston2 FXRP agent
@@ -14,7 +16,7 @@ async function main() {
   console.log(" Vouchsafe demo — Coston2");
   console.log("========================================\n");
 
-  console.log("[1/2] HAPPY PATH — private solvency proof (TEE) + reserve proof (FDC)\n");
+  console.log("[1/3] HAPPY PATH — private solvency proof (TEE) + reserve proof (FDC)\n");
   const happy = await attest({ subject: AGENT_VAULT, reserves: RESERVES, liabilities: ["900000"] });
   console.log(`\n  attestation id : ${happy.attestationId}`);
   console.log(`  recorded tx    : ${happy.explorerUrl}`);
@@ -23,7 +25,16 @@ async function main() {
   console.log(`                    inputHash=${view.inputHash}`);
   console.log("                    (reserves & liabilities never appear on-chain)\n");
 
-  console.log("[2/2] FRAUD PATH — attestor lies (reserves < liabilities), gets slashed\n");
+  console.log("[2/3] QUORUM — subject demands 1 independent endorsement before the record is final\n");
+  await ensureQuorumPolicy(AGENT_VAULT, 1);
+  const before = await readAttestation(happy.attestationId);
+  console.log(`  quorate before endorsement: ${before.quorate}`);
+  const endorsed = await endorseAttestation(happy.attestationId);
+  console.log(`  endorse tx     : ${endorsed.explorerUrl}`);
+  console.log(`  quorate after  : ${endorsed.quorate} (${endorsed.endorsements} endorsement)`);
+  console.log("  the endorser's own stake is now slashable for this claim\n");
+
+  console.log("[3/3] FRAUD PATH — attestor lies (reserves < liabilities), gets slashed\n");
   const fraud = await commitFraud({ subject: AGENT_VAULT, reserves: RESERVES, liabilities: ["2000000"] });
   console.log(`\n  fraudulent id  : ${fraud.attestationId}`);
   console.log(`  slash tx       : ${fraud.fraudExplorerUrl}`);

@@ -26,7 +26,9 @@
           <a href="#prove">Prove</a>
           <a href="#verify">Verify</a>
           <a href="#accountability">Accountability</a>
+          <a href="#quorum">Quorum</a>
           <a href="#how">How it works</a>
+          <button class="btn sm ghost" id="walletBtn" title="Connect a browser wallet (Coston2)">Connect wallet</button>
           <span class="net-pill" id="netPill"><span class="net-dot"></span><span id="netText">connecting…</span></span>
         </div>
       </div>
@@ -243,6 +245,61 @@
         </div>
       </section>
 
+      <!-- ================================================= quorum ===== -->
+      <section class="block" id="quorum">
+        <div class="section-head">
+          <div class="kicker">Act IV · The quorum</div>
+          <h2>Many stakes, one claim <span class="tag account">quorum</span></h2>
+          <p>An issuer can demand that <b>independent staked attestors co-sign</b> an attestation before it counts
+             as final. Every endorser puts their own bond behind the same claim — and is slashed with the recorder
+             if it is ever proven false. Endorse from your own wallet, or let the service's second attestor do it.</p>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h3>Your attestor wallet <span class="tag chain" style="margin-left:auto">MetaMask · Coston2</span></h3>
+            <p class="sub" id="wStatus">Checking for a browser wallet…</p>
+            <div class="kv"><span class="k">active stake</span><span class="v" id="wStake">—</span></div>
+            <div id="wActions" style="display:none; margin-top:14px">
+              <button class="btn sm" id="wStakeBtn">Stake</button>
+            </div>
+            <div style="margin-top:18px">
+              <label>Endorse an attestation id</label>
+              <div style="display:flex; gap:8px; flex-wrap:wrap">
+                <input id="endorseId" type="text" placeholder="0x… (from Act I or the table)" style="flex:1; min-width:220px" />
+                <button class="btn" id="endorseBtn">Endorse</button>
+              </div>
+              <p class="faint" style="font-size:11.5px; margin:10px 0 0">
+                Endorsing locks your stake for the claim's challenge window. If the claim is proven fraudulent,
+                you are slashed alongside the recording attestor — only endorse what you have re-verified.
+              </p>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Why quorum matters</h3>
+            <div class="steps" style="margin-top:12px">
+              <div class="step-row"><div class="n">1</div><div class="txt"><b>Per-subject policy</b> — the issuer sets <span class="mono">requiredEndorsements</span>, a stake floor, and a slash penalty on the verifier.</div></div>
+              <div class="step-row"><div class="n">2</div><div class="txt"><b>Independent re-check</b> — each endorser re-runs the confidential computation before backing the claim.</div></div>
+              <div class="step-row"><div class="n">3</div><div class="txt"><b>Shared liability</b> — one fraud proof slashes the recorder <em>and</em> every endorser in a single transaction.</div></div>
+              <div class="step-row"><div class="n">4</div><div class="txt"><b>Finality signal</b> — consumers read <span class="mono">isQuorate(id)</span>: solvency is only "final" once enough independent capital backs it.</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <h3>Attestation history <button class="btn sm ghost" id="historyRefresh" style="margin-left:auto">refresh</button></h3>
+          <p class="sub">Every attestation recorded by this deployment, straight from on-chain events — commitments only.</p>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead>
+                <tr><th>id</th><th>subject</th><th>attestor</th><th>at T</th><th>status</th><th>endorsements</th><th>tx</th><th></th></tr>
+              </thead>
+              <tbody id="historyBody"></tbody>
+            </table>
+            <div class="muted" id="historyEmpty" style="padding:14px 4px">Loading history…</div>
+          </div>
+        </div>
+      </section>
+
       <!-- ==================================================== how ===== -->
       <section class="block" id="how">
         <div class="section-head">
@@ -312,6 +369,8 @@
     <div class="toast" id="toast"></div>
 
     <script src="keccak256.js"></script>
+    <script src="wallet-connect.js"></script>
+    <script src="attestation-history.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

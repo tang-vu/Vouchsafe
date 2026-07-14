@@ -28,4 +28,6 @@ export const config = {
   daLayerUrl: process.env.COSTON2_DA_LAYER_URL ?? "",
   port: Number(process.env.ATTESTOR_SERVICE_PORT ?? 7900),
   addresses: deployments.contracts as DeployedAddresses,
+  // First block of the deployment — lower bound for event scans (0 = unknown, scan a recent window).
+  startBlock: Number(deployments.startBlock ?? 0),
 };

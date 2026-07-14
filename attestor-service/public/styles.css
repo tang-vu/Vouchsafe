@@ -346,3 +346,25 @@ input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px r
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
 }
+
+/* ------------------------------------------- quorum panel + history --- */
+.tbl-wrap { overflow-x: auto; }
+.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.tbl th {
+  text-align: left; padding: 8px 10px; color: var(--text-faint); font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em; font-size: 10.5px;
+  border-bottom: 1px solid var(--border-strong); white-space: nowrap;
+}
+.tbl td { padding: 9px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; vertical-align: middle; }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tr:hover td { background: rgba(109, 139, 255, 0.05); }
+
+.badge {
+  display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 600;
+  letter-spacing: 0.03em; border: 1px solid transparent; vertical-align: middle;
+}
+.badge.ok { color: var(--ok); background: rgba(52, 217, 154, 0.10); border-color: rgba(52, 217, 154, 0.35); }
+.badge.warn { color: var(--warn); background: rgba(246, 198, 103, 0.10); border-color: rgba(246, 198, 103, 0.35); }
+.badge.bad { color: var(--bad); background: rgba(255, 92, 122, 0.10); border-color: rgba(255, 92, 122, 0.35); }
+
+#walletBtn { white-space: nowrap; }

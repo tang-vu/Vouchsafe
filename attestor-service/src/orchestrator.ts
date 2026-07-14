@@ -221,8 +221,14 @@ export async function commitFraud(input: AttestInput, log: Logger = console.log)
 }
 
 export async function readAttestation(id: string) {
-  const registry = new Contract(config.addresses.SolvencyRegistry, REGISTRY_ABI, provider());
-  const a = await registry.getAttestation(id);
+  const p = provider();
+  const registry = new Contract(config.addresses.SolvencyRegistry, REGISTRY_ABI, p);
+  const verifier = new Contract(config.addresses.SolvencyVerifier, VERIFIER_ABI, p);
+  const [a, endorsements, quorate] = await Promise.all([
+    registry.getAttestation(id),
+    verifier.endorsementCount(id),
+    verifier.isQuorate(id),
+  ]);
   return {
     subject: a.subject,
     attestor: a.attestor,
@@ -230,5 +236,7 @@ export async function readAttestation(id: string) {
     timestamp: Number(a.timestamp),
     inputHash: a.inputHash,
     revoked: a.revoked,
+    endorsements: Number(endorsements),
+    quorate: quorate as boolean,
   };
 }

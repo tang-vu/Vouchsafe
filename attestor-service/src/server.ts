@@ -2,6 +2,8 @@ import express, { Request, Response } from "express";
 import * as path from "path";
 import { config } from "./config";
 import { attest, commitFraud, readAttestation } from "./orchestrator";
+import { listAttestations } from "./attestation-history";
+import { endorseAttestation } from "./quorum-endorser";
 
 /** HTTP API + static frontend for the Vouchsafe attestor-service. */
 export function createServer() {
@@ -28,6 +30,28 @@ export function createServer() {
   app.get("/api/attestation/:id", async (req: Request, res: Response) => {
     try {
       res.json(await readAttestation(req.params.id));
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : "error" });
+    }
+  });
+
+  // Event-indexed attestation history (newest first) with live quorum status.
+  app.get("/api/attestations", async (req: Request, res: Response) => {
+    try {
+      const subject = typeof req.query.subject === "string" ? req.query.subject : undefined;
+      const limit = req.query.limit ? Number(req.query.limit) : undefined;
+      res.json(await listAttestations({ subject, limit }));
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : "error" });
+    }
+  });
+
+  // Endorse an attestation with the service's derived second attestor (stake-backed co-signature).
+  app.post("/api/endorse", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.body ?? {};
+      if (typeof id !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(id)) throw new Error("bad attestation id");
+      res.json(await endorseAttestation(id));
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : "error" });
     }

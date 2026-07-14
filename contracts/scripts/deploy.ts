@@ -14,6 +14,9 @@ async function main() {
   console.log(`Deployer:  ${deployer.address}`);
   console.log(`Balance:   ${ethers.formatEther(balance)} ${network.name === "coston2" ? "C2FLR" : "ETH"}`);
 
+  // Recorded in the deployments file as the lower bound for event scans (attestation history).
+  const startBlock = await ethers.provider.getBlockNumber();
+
   // --- deployment parameters ---
   const minStake = ethers.parseEther("1"); // minimum active stake to attest
   const unbondingPeriod = 60 * 60; // 1 hour before withdrawal after unstake
@@ -63,6 +66,7 @@ async function main() {
     network: network.name,
     chainId: network.config.chainId ?? null,
     deployer: deployer.address,
+    startBlock,
     contracts: {
       SolvencyRegistry: registryAddress,
       AttestorStaking: stakingAddress,

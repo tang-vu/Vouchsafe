@@ -2,12 +2,13 @@
   "network": "coston2",
   "chainId": 114,
   "deployer": "0x18e0C3282F6a1cE0a4813c1b9Da005244be593D7",
+  "startBlock": 32823533,
   "contracts": {
-    "SolvencyRegistry": "0x427ad9d3Cb675FC99D4fd0BCC230537D05d6A9F0",
-    "AttestorStaking": "0x6fE9C52F3aB9883Ec3b785F605DA3740754f290B",
-    "SolvencyVerifier": "0xBBB69428F3C51E4D7A335C39227e28B0a7EE321A",
-    "VouchsafeInstructionSender": "0xF12c76AAa891bb7092B23F721319575605892cc4",
-    "FxrpAgentBinding": "0x99E3080F803C81a2A03A4570712693B756D329Cf"
+    "SolvencyRegistry": "0x7dE3581C791F040B2df07520B4334C93DeF5C3E8",
+    "AttestorStaking": "0x24d5f0B559E84d50f651b7e45577Baf638978e1E",
+    "SolvencyVerifier": "0x59b044B0a2d17FE10336367B1d9f25C6DcB76686",
+    "VouchsafeInstructionSender": "0x38e53EF3eF09BE3cF0C10Fdbb36c702747F32FfE",
+    "FxrpAgentBinding": "0xc98F898f4717879237FB5eB5d82afe7BFD874ccc"
   },
   "params": {
     "minStake": "1000000000000000000",
@@ -15,5 +16,5 @@
     "challengeWindow": 86400,
     "slashPenalty": "1000000000000000000"
   },
-  "timestamp": "2026-07-13T16:11:22.499Z"
+  "timestamp": "2026-07-14T01:56:38.283Z"
 }

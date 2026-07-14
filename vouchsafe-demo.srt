@@ -1,0 +1,36 @@
+1
+00:00:00,000 --> 00:00:24,480
+This is Vouchsafe — private, stake-backed proof of solvency on Flare. An RW Aissuer or FX RP agent proves reserves cover liabilities — without revealing a single number. Private, because the check runs inside a confidential enclave. Accountable, because attestors stake collateral they lose if they lied.
+
+2
+00:00:25,180 --> 00:00:38,460
+Every record needs two independent proofs: a signature from the enclave, and a Flare Data Connector proof of the reserves. The verifier contract refuses either one alone.
+
+3
+00:00:39,160 --> 00:01:10,520
+Act one: the issuer. Reserves and liabilities go into the enclave — and only there. This is not a simulation: the signature you are about to see is born inside a real Google Confidential Space enclave, on AM DS EV hardware. Watch the live trace: enclave signature, FD Cround trip, on-chain record — a real Flare voting round, compressed here from about three minutes.
+
+4
+00:01:11,220 --> 00:01:23,060
+On chain: subject, attestor, timestamp, and two commitments. No amounts. The raw figures were computed and discarded inside the enclave.
+
+5
+00:01:23,760 --> 00:01:37,680
+Act two: the counterparty. Paste the attestation i d and read the registry directly. Reserves, liabilities, salt — structurally absent from the chain.
+
+6
+00:01:38,380 --> 00:01:54,380
+Act three: the quorum. Solvency only becomes final when independent capital agrees. Asecond staked attestor endorses the record — and will be slashed alongside the recorder if the claim is ever proven false.
+
+7
+00:01:55,080 --> 00:02:20,680
+But what if the attestor lies? In simulated mode, we play a compromised enclave key signing solvent over insolvent figures. Anyone who reveals the committed numbers slashes the stake — one point zero, to zero. Against the real enclave, this attack is impossible: a genuine TE Ewill not sign a false claim.
+
+8
+00:02:21,380 --> 00:02:42,340
+Act five: the XR PL rail. Reserves for FX RP agents live on the XR PLedger itself. The subject answers an on-chain challenge with a real XR PL payment, and Flare FD Ccarries the proof on chain. No custodian AP Iin the loop.
+
+9
+00:02:43,040 --> 00:03:01,440
+Everything you saw is live and source-verified on Coston2 — including an attestation signed inside a real enclave, with a Google-signed token pinning the exact code that ran. Vouchsafe: prove you are solvent. Reveal nothing.
+

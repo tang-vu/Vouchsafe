@@ -54,6 +54,8 @@ FDC-attested reserves (used in Phase 3).
   code-hash whitelisting, and the `TeeExtensionRegistry` round-trip (event-anchored instead, since the FCC
   registry is not yet published in the Coston2 `FlareContractRegistry`).
 
-To go production: build the image with `MODE=0` + a reproducible `SOURCE_DATE_EPOCH`, run it in Confidential
-Space, register the TEE + whitelist the code hash, set the enclave address via `SolvencyVerifier.setTeeAddress`,
-and point `VouchsafeInstructionSender` at the real `TeeExtensionRegistry`.
+To go production: `bash confidential-space/setup-confidential-space.sh` (needs a billing-enabled GCP project;
+builds the bundled `Dockerfile` on Cloud Build, boots a Confidential Space VM with `MODE=0` and an
+enclave-generated key, exposes the Google-signed token at `GET /attestation`), then set the enclave address via
+`SolvencyVerifier.setTeeAddress`. Full guide: `docs/confidential-space-deployment-guide.md`. Pointing
+`VouchsafeInstructionSender` at the real `TeeExtensionRegistry` stays pending until Flare publishes it on Coston2.

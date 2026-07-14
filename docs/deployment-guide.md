@@ -20,11 +20,13 @@ Fill in `.env` (git-ignored):
 ## 2. Compile, test, deploy
 ```bash
 yarn compile
-yarn test                     # 24 unit tests
+yarn test                     # 56 unit tests
 yarn deploy:coston2           # writes contracts/deployments/coston2.json + .env addresses
+yarn workspace @vouchsafe/contracts deploy:xrpl-reserve-proof   # appends XrplReserveProof to the same file
 ```
-The deploy script deploys all five contracts and wires roles (`registry.verifier` + `staking.slasher` →
-`SolvencyVerifier`), then prints explorer links.
+The deploy script deploys the five core contracts and wires roles (`registry.verifier` + `staking.slasher` →
+`SolvencyVerifier`), then prints explorer links. The XRPL control-proof contract deploys separately and never
+requires redeploying the core.
 
 ## 3. Verify source on the explorer (optional)
 ```bash
@@ -34,9 +36,19 @@ Blockscout ignores the API token value; the config supplies a placeholder so the
 
 ## 4. Run
 ```bash
-yarn demo                     # unattended happy + fraud paths, ~5 min (two FDC rounds)
-yarn service                  # http://localhost:7900 — 3-view UI
+yarn demo                     # unattended happy + quorum + fraud paths, ~5 min (two FDC rounds)
+yarn demo:xrpl                # XRPL testnet challenge payment → FDC Payment proof → proveControl (~4 min)
+yarn service                  # http://localhost:7900 — 5-act UI
 ```
+
+## 5. Public read-only hosting (judge-testable demo)
+`READ_ONLY=1` disables every endpoint that spends the server's key/stake (403); history, verification, XRPL
+status, and MetaMask writes keep working, and no `PRIVATE_KEY` is required in the container.
+```bash
+READ_ONLY=1 yarn service      # local read-only run
+fly auth login && fly launch --copy-config --no-deploy && fly deploy   # Fly.io via root Dockerfile + fly.toml
+```
+Any Docker host works: `docker build -t vouchsafe-demo . && docker run -p 7900:7900 vouchsafe-demo`.
 
 ## FDC reserves endpoint (content-type gotcha)
 Flare's Web2Json verifier requires the fetched URL to return `Content-Type: application/json`, and its jq engine
@@ -44,11 +56,13 @@ does **not** support `fromjson`. A raw GitHub gist serves `text/plain`, so the d
 `gist.githack.com`, which sets `application/json`; the field `.reserves` is then read directly.
 
 ## Upgrading to real Confidential Space (MODE=0)
-1. Build the extension image with `MODE=0` and a reproducible `SOURCE_DATE_EPOCH`.
-2. Run it in a GCP Confidential Space VM; register the TEE machine and whitelist the code hash (needs Flare
-   indexer-DB credentials + the FCE Docker stack).
-3. `SolvencyVerifier.setTeeAddress(<enclave address>)`, and point `VouchsafeInstructionSender` at the real
-   `TeeExtensionRegistry`.
+One command once GCP billing is enabled:
+```bash
+bash tee-extension/confidential-space/setup-confidential-space.sh
+```
+Full walkthrough (image build on Cloud Build, attestation-token verification, `setTeeAddress`, teardown, costs):
+[`confidential-space-deployment-guide.md`](confidential-space-deployment-guide.md). The on-chain
+`TeeExtensionRegistry` round-trip stays pending until Flare publishes that registry on Coston2.
 
 ## Redeploy note
 Re-running `deploy:coston2` deploys fresh contracts (new addresses). Update `.env` + anything referencing the old

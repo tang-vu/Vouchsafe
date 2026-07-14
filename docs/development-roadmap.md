@@ -28,9 +28,25 @@
   browser; service-endorser fallback (`POST /api/endorse`); history table.
 - [x] Redeployed + explorer-verified on Coston2; `yarn demo` now exercises happy + quorum + fraud paths.
 
+### Delivered (Phase 7 — submission final push, 14 Jul 2026)
+- [x] **XRPL-native reserve proof** (`XrplReserveProof`, FDC **Payment** type): challenge-payment proof that the
+  subject controls its registered XRP reserve address — chain/contract/subject/nonce-bound memo reference,
+  replay-safe (nonce + tx guards), freshness bound. 12 new unit tests (56 total). Deployed + verified
+  (`0x878Fe3305cC23aDfa6CfF10E1B9e811e9A2Ac9f0`) and **proven live**: XRPL testnet payment `FDA9BA6A…` →
+  Coston2 `proveControl` tx `0x354c0811…`.
+- [x] Shared FDC plumbing (`fdc-common.ts`) + `fdc-payment.ts` round-trip + `xrpl-client.ts` (xrpl.js) +
+  `yarn demo:xrpl`; `GET /api/xrpl-proof/:subject`; frontend Act V.
+- [x] **Confidential Space scaffolding**: `tee-extension/Dockerfile`, `/attestation` launcher-token endpoint,
+  one-command `setup-confidential-space.sh` (Cloud Build — no local Docker), operator guide
+  (`docs/confidential-space-deployment-guide.md`). Blocked only on a billing-enabled GCP project.
+- [x] **Public demo hosting**: `READ_ONLY` service mode (write paths 403, MetaMask still works), root
+  `Dockerfile`, `fly.toml`, read-only UI banner.
+- [x] Demo-video storyboard (`plans/260714-1037-flare-submission-final-push/demo-video-script-storyboard.md`).
+
 ## Next (post-hackathon)
-- [ ] Real GCP **Confidential Space (MODE=0)**: reproducible build, TEE registration, code-hash whitelisting, then flip `setTeeAddress` + point `VouchsafeInstructionSender` at the live `TeeExtensionRegistry`.
-- [ ] **XRPPayment** FDC attestation type for XRPL-native reserve proofs (alongside Web2Json).
+- [ ] **Run** Confidential Space (user action): enable GCP billing → `setup-confidential-space.sh` →
+  `setTeeAddress(enclaveAddr)`; later point `VouchsafeInstructionSender` at the live `TeeExtensionRegistry`.
+- [ ] Record + upload the demo video; `fly deploy` the public read-only demo; post to the Flare Telegram for traction.
 - [ ] Unbonding/lock parameter tuning informed by real challenge-latency data.
 - [ ] **Privacy on reserves too** — range-proof / ZK option so the reserves figure (not just liabilities) stays hidden.
 - [ ] Mainnet FXRP; integrate with agent tooling; production verifier/DA-layer API keys.

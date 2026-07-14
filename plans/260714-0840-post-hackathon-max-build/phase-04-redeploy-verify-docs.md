@@ -16,6 +16,6 @@ git history keeps the previous deployments JSON.
 - Redeploy overwrites coston2.json → recoverable via git.
 
 ## Todo
-- [x] deploy + verify (verify: pending explorer backend, standard-json saved)
+- [x] deploy + verify (all 5 source-verified on Blockscout; v2 verifier freshly verified)
 - [x] live demo pass (happy + fraud + endorse)
 - [x] docs + commits

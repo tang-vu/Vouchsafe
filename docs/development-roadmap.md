@@ -43,10 +43,18 @@
   `Dockerfile`, `fly.toml`, read-only UI banner.
 - [x] Demo-video storyboard (`plans/260714-1037-flare-submission-final-push/demo-video-script-storyboard.md`).
 
-## Next (post-hackathon)
-- [ ] **Run** Confidential Space (user action): enable GCP billing → `setup-confidential-space.sh` →
-  `setTeeAddress(enclaveAddr)`; later point `VouchsafeInstructionSender` at the live `TeeExtensionRegistry`.
-- [ ] Record + upload the demo video; `fly deploy` the public read-only demo; post to the Flare Telegram for traction.
+### Delivered (Phase 8 — live TEE run + video + submission, 14 Jul 2026)
+- [x] **Real Confidential Space run**: enclave deployed on GCP (AMD SEV, production image, in-enclave key),
+  solvency attestation recorded on Coston2 with the enclave signature; Google-signed attestation token +
+  evidence archived. VM torn down after capture (billing closed) — evidence is permanent on-chain.
+- [x] **Demo video produced & published**: https://youtu.be/1t-Nm9hdITs (3:02, narrated via TTS, subtitles) —
+  captured from the live UI with Playwright, assembled with ffmpeg.
+- [x] **BUIDL SUBMITTED to DoraHacks (Flare Summer Signal) — 14 Jul 2026.** Form content archived in
+  `plans/260714-1037-flare-submission-final-push/dorahacks-buidl-form-content.md`. Deadline 15 Aug — edits allowed.
+
+## Next (pre-deadline polish, optional)
+- [ ] Public demo URL (Cloud Run once billing re-enabled ≈ $0/mo, or Fly.io) → add to the BUIDL profile + SUBMISSION §5.
+- [ ] Post the video/demo to the Flare Hackathon Telegram for traction; record any feedback in SUBMISSION.
 - [ ] Unbonding/lock parameter tuning informed by real challenge-latency data.
 - [ ] **Privacy on reserves too** — range-proof / ZK option so the reserves figure (not just liabilities) stays hidden.
 - [ ] Mainnet FXRP; integrate with agent tooling; production verifier/DA-layer API keys.

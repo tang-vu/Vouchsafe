@@ -1,0 +1,16 @@
+# Keep the Cloud Build upload small: only what the root Dockerfile needs.
+.git
+node_modules
+**/node_modules
+contracts/artifacts
+contracts/cache
+contracts/typechain-types
+contracts/src
+contracts/test
+contracts/scripts
+plans
+docs
+*.mp4
+*.srt
+*.png
+tee-extension/confidential-space

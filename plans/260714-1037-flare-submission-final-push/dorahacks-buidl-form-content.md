@@ -155,5 +155,8 @@ Built for the Flare Summer Signal hackathon — Interoperable Asset Products + C
 Nội dung trả phí quảng cáo → không · Danh sách phát → bỏ qua · Chế độ hiển thị → Không công khai (unlisted) là đủ cho chấm giải.
 Phụ đề: sau khi upload, vào Subtitles → tải lên `vouchsafe-demo.srt` (English).
 
-## Unresolved
-- YouTube link (user uploads video) and optional Fly URL — fill before final submit.
+## Status: SUBMITTED — 14 Jul 2026
+BUIDL created and submitted on DoraHacks with this content (video https://youtu.be/1t-Nm9hdITs, website left blank).
+DoraHacks allows editing after creation — remaining optional polish:
+- Public demo URL (Cloud Run when billing re-enabled, or Fly.io) → add to profile.
+- Traction: post in the Flare Hackathon Telegram, note feedback.

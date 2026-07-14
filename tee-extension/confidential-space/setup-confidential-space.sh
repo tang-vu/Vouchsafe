@@ -57,7 +57,10 @@ gcloud compute instances create "${VM_NAME}" \
   --service-account="${SA}" \
   --scopes=cloud-platform \
   --tags=vouchsafe-tee \
-  --metadata="^~^tee-image-reference=${IMAGE}@${DIGEST}~tee-container-log-redirect=true~tee-env-MODE=0~tee-env-SIMULATED_TEE=false"
+  --metadata="^~^tee-image-reference=${IMAGE}@${DIGEST}~tee-container-log-redirect=true"
+# NOTE: MODE=0 / SIMULATED_TEE=false are baked into the image (Dockerfile ENV) on purpose — the
+# Confidential Space launcher rejects tee-env-* overrides unless the image allow-lists them, and
+# baked-in env is part of the attested image identity anyway.
 
 echo "[6/6] Opening the extension port (demo only — restrict source ranges in production)…"
 gcloud compute firewall-rules create allow-vouchsafe-tee --project "${PROJECT}" \

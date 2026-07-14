@@ -35,6 +35,12 @@ backing to counterparties/regulators without publishing their full books.
   - Fraud proven → stake slashed (1.0 → 0.0 C2FLR): [`0xcfa391b0…`](https://coston2-explorer.flare.network/tx/0xcfa391b0077b180ebc29b5406f55d044ba7e639c8f009b79e0a1991b803f2347)
   - **XRPL control proven** (FDC Payment, challenge memo): Coston2 [`0x354c0811…`](https://coston2-explorer.flare.network/tx/0x354c0811f8084604e6c4289217e985fce1500fdbe22e30396911619356d464e9)
     ← XRPL testnet payment [`FDA9BA6A…`](https://testnet.xrpl.org/transactions/FDA9BA6A13897A3A0FD674A2659A56CD00031C3168E7E6B4371CA725A5FC6DBD)
+  - **REAL TEE — solvency recorded with a signature born inside GCP Confidential Space (AMD SEV)**:
+    [`0x8f0595ba…`](https://coston2-explorer.flare.network/tx/0x8f0595ba1a94b29988df6e9bb139a5cbe8c94f4c580dbc23fefe3ed641202d47)
+    — enclave address `0x8dCdC4017e4a65BB2e0266E8CD26aA7C10bA9E51`, image digest `sha256:848c6b62…` bound in a
+    Google-signed attestation token (`hwmodel: GCP_AMD_SEV`, `dbgstat: disabled-since-boot`); quorum endorsement
+    on the same record: [`0x8ccb9e95…`](https://coston2-explorer.flare.network/tx/0x8ccb9e95405a61ab206ee4e78d6a53bda8d16841fd308ec94247194ddd101ba4).
+    Full evidence: `plans/260714-1037-flare-submission-final-push/confidential-space-live-run-evidence.md`.
   - Frontend (5 acts: prove / verify / slash / quorum + history / XRPL, MetaMask-enabled): `yarn service` → http://localhost:7900
   - Public judge-testable hosting: `READ_ONLY=1` mode + root `Dockerfile` + `fly.toml` ship in the repo
     (`fly deploy` — hosted URL to be added here).
@@ -108,12 +114,14 @@ digest, no cross-chain replay, no malleability; TS/Solidity digests byte-match) 
 
 ## 10. What is real vs. simulated
 Real on Coston2: confidential computation, TEE signature + on-chain `ecrecover`, both FDC round-trips (Web2Json +
-XRPL Payment), FXRP agent binding, staking/slashing, XRPL reserve-address control proofs. Simulated: the enclave
-(local process) and the `TeeExtensionRegistry` round-trip (Flare has not published that registry on Coston2 yet).
-The repo now ships a **one-command GCP Confidential Space deployment** (`tee-extension/confidential-space/`,
-Dockerfile, `/attestation` token endpoint, operator guide in `docs/confidential-space-deployment-guide.md`) — the
-only remaining manual step is a billing-enabled GCP project. Signing and on-chain verification are identical in
-both modes.
+XRPL Payment), FXRP agent binding, staking/slashing, XRPL reserve-address control proofs — **and the enclave
+itself**: the extension was deployed to **GCP Confidential Space (AMD SEV, production image, debug disabled)**
+via the repo's one-command setup (`tee-extension/confidential-space/`), the signing key was generated in-enclave,
+and a solvency attestation was recorded on Coston2 with that key (evidence links in §5; Google-signed attestation
+token binds the exact image digest). The `yarn demo` fraud act intentionally refuses to run against the real
+enclave — a genuine TEE will not sign a false claim (it exists to demo the compromised-key scenario in simulated
+mode). Still simulated/pending: the `TeeExtensionRegistry` round-trip (Flare has not published that registry on
+Coston2 yet). Signing and on-chain verification are identical in both modes.
 
 ## 11. Roadmap
 - ~~Multi-attestor quorum + configurable per-issuer stake/penalty~~ — **shipped** (endorse/quorum + `SubjectPolicy`).

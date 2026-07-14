@@ -1,5 +1,6 @@
 import { attest, commitFraud, readAttestation } from "./orchestrator";
 import { endorseAttestation, ensureQuorumPolicy } from "./quorum-endorser";
+import { config } from "./config";
 
 /**
  * Unattended end-to-end demo on Coston2:
@@ -14,6 +15,7 @@ const RESERVES = ["1000000", "500000"]; // sums to 1,500,000 (matches the reserv
 async function main() {
   console.log("========================================");
   console.log(" Vouchsafe demo — Coston2");
+  console.log(` enclave: ${config.extensionUrl ? `REMOTE ${config.extensionUrl} (Confidential Space)` : "in-process (simulated)"}`);
   console.log("========================================\n");
 
   console.log("[1/3] HAPPY PATH — private solvency proof (TEE) + reserve proof (FDC)\n");
@@ -35,10 +37,17 @@ async function main() {
   console.log("  the endorser's own stake is now slashable for this claim\n");
 
   console.log("[3/3] FRAUD PATH — attestor lies (reserves < liabilities), gets slashed\n");
-  const fraud = await commitFraud({ subject: AGENT_VAULT, reserves: RESERVES, liabilities: ["2000000"] });
-  console.log(`\n  fraudulent id  : ${fraud.attestationId}`);
-  console.log(`  slash tx       : ${fraud.fraudExplorerUrl}`);
-  console.log(`  attestor stake : ${fraud.stakeBefore} -> ${fraud.stakeAfter} C2FLR (slashed)\n`);
+  if (config.extensionUrl) {
+    // The strongest argument for the TEE: this act is IMPOSSIBLE against a real enclave.
+    console.log("  skipped by design: a real Confidential Space enclave will not sign a false claim.");
+    console.log("  The fraud act plays a compromised enclave key — unset TEE_EXTENSION_URL to run it");
+    console.log("  in simulated mode.\n");
+  } else {
+    const fraud = await commitFraud({ subject: AGENT_VAULT, reserves: RESERVES, liabilities: ["2000000"] });
+    console.log(`\n  fraudulent id  : ${fraud.attestationId}`);
+    console.log(`  slash tx       : ${fraud.fraudExplorerUrl}`);
+    console.log(`  attestor stake : ${fraud.stakeBefore} -> ${fraud.stakeAfter} C2FLR (slashed)\n`);
+  }
 
   console.log("========================================");
   console.log(" Demo complete — both bounties exercised live on Coston2");

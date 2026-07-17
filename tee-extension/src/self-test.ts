@@ -34,6 +34,19 @@ async function main() {
     "reservesCommitment depends only on total reserves"
   );
 
+  // --- confidential-reserves mode: salted commitment ---
+  const reservesSalt = keccak256(toUtf8Bytes("self-test-reserves-salt"));
+  const saltedCase = computeSolvency(["1000000", "500000"], ["900000"], salt, reservesSalt);
+  check(
+    saltedCase.reservesCommitment !== solventCase.reservesCommitment,
+    "salted reserves commitment differs from the unsalted one"
+  );
+  check(
+    saltedCase.reservesCommitment === computeSolvency(["1500000"], ["1"], salt, reservesSalt).reservesCommitment,
+    "salted commitment depends only on total reserves + reservesSalt"
+  );
+  check(saltedCase.inputHash === solventCase.inputHash, "reservesSalt does not perturb the input commitment");
+
   // --- sign + recover ---
   const signer = new TeeSigner("", true);
   const chainId = 114;

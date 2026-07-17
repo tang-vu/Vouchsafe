@@ -52,11 +52,24 @@
 - [x] **BUIDL SUBMITTED to DoraHacks (Flare Summer Signal) — 14 Jul 2026.** Form content archived in
   `plans/260714-1037-flare-submission-final-push/dorahacks-buidl-form-content.md`. Deadline 15 Aug — edits allowed.
 
+### Delivered (Phase 9 — confidential reserves mode, 17 Jul 2026)
+- [x] **Privacy on reserves too**: per-subject `confidentialReserves` flag — the reserves endpoint
+  publishes a **salted commitment** `keccak256(abi.encode(totalReserves, reservesSalt))` instead of the
+  raw total; the TEE takes `reservesSalt` as an extra private input and recomputes the commitment
+  in-enclave; on-chain the verifier compares commitment-to-commitment, so the raw figure never appears
+  on the endpoint, in calldata, or in storage. Also closes the dictionary-attack gap of the old
+  unsalted `keccak256(reserves)` commitment. Fraud reveal / slashing unchanged. 7 new unit tests
+  (63 total); TEE self-test extended; `CONFIDENTIAL_RESERVES` + `RESERVES_SALT` env wiring end-to-end.
+  Not yet redeployed to Coston2 (would change the submitted addresses — deliberate).
+
 ## Next (pre-deadline polish, optional)
+- [ ] Redeploy verifier with confidential-reserves mode to Coston2 + live commitment-endpoint round-trip
+  (decide vs. keeping the submitted addresses frozen until judging).
 - [ ] Public demo URL (Cloud Run once billing re-enabled ≈ $0/mo, or Fly.io) → add to the BUIDL profile + SUBMISSION §5.
 - [ ] Post the video/demo to the Flare Hackathon Telegram for traction; record any feedback in SUBMISSION.
 - [ ] Unbonding/lock parameter tuning informed by real challenge-latency data.
-- [ ] **Privacy on reserves too** — range-proof / ZK option so the reserves figure (not just liabilities) stays hidden.
+- [ ] Full ZK range-proof variant (commitment mode ships the privacy; a ZK proof would drop the TEE-trust
+  for the inequality itself).
 - [ ] Mainnet FXRP; integrate with agent tooling; production verifier/DA-layer API keys.
 - [ ] Subgraph for cross-deployment attestation history (the event-scan API covers a single deployment).
 

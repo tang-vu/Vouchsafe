@@ -8,7 +8,9 @@ import {ISolvencyRegistry} from "./interfaces/ISolvencyRegistry.sol";
 import {IAttestorStaking} from "./interfaces/IAttestorStaking.sol";
 import {SolvencyVerifierAdmin} from "./SolvencyVerifierAdmin.sol";
 
-/// @dev Shape of the FDC-attested reserves payload (the endpoint returns a single reserves total).
+/// @dev Shape of the FDC-attested reserves payload in plain mode (the endpoint returns a single
+///      reserves total). In confidential mode the payload is a single `bytes32` salted commitment
+///      instead; both are one 32-byte ABI word, decoded per the subject's mode.
 struct DataTransportObject {
     uint256 reserves;
 }
@@ -23,10 +25,14 @@ struct DataTransportObject {
  *         The attestor's stake backs the assertion; independent staked attestors can `endorse` it,
  *         putting their own stake behind the same claim until a per-subject quorum is reached.
  *         A proven fraud slashes the recorder AND every endorser.
- * @dev Reserves are public (attested from a public endpoint); liabilities stay private (only committed
- *      via `inputHash`). Fraud is proven by revealing the committed reserves/liabilities/salt that open
- *      `inputHash` with `reserves < liabilities` — no FDC proof is needed at challenge time, so reserve
- *      drift after recording cannot shield a fraudulent attestation.
+ * @dev Liabilities always stay private (only committed via `inputHash`). Reserves privacy is
+ *      per-subject: in plain mode the endpoint publishes the raw total (public); in confidential mode
+ *      (`confidentialReserves[subject]`) the endpoint publishes a SALTED commitment
+ *      `keccak256(abi.encode(totalReserves, reservesSalt))` and the raw figure never appears on-chain
+ *      or on the endpoint — the TEE opens both commitments privately and asserts the inequality.
+ *      Fraud is proven by revealing the committed reserves/liabilities/salt that open `inputHash` with
+ *      `reserves < liabilities` — no FDC proof is needed at challenge time, so reserve drift after
+ *      recording cannot shield a fraudulent attestation.
  */
 contract SolvencyVerifier is SolvencyVerifierAdmin {
     using MessageHashUtils for bytes32;
@@ -85,8 +91,14 @@ contract SolvencyVerifier is SolvencyVerifierAdmin {
 
     // --- FDC proof ---
 
-    /// @dev Verify an FDC proof, require it came from the subject's approved source, and return reserves.
-    function _attestedReserves(IWeb2Json.Proof calldata fdcProof, address subject) internal view returns (uint256) {
+    /// @dev Verify an FDC proof, require it came from the subject's approved source, and return the
+    ///      reserves commitment it binds to: `keccak256(abi.encode(reserves))` over the attested raw
+    ///      total in plain mode, or the endpoint's attested salted commitment in confidential mode
+    ///      (the raw reserves figure never touches the chain).
+    function _attestedReservesCommitment(
+        IWeb2Json.Proof calldata fdcProof,
+        address subject
+    ) internal view returns (bytes32) {
         require(fdcVerifier().verifyWeb2Json(fdcProof), "SolvencyVerifier: bad FDC proof");
         bytes32 srcHash = reservesSourceHash[subject];
         require(srcHash != bytes32(0), "SolvencyVerifier: source not set");
@@ -94,8 +106,11 @@ contract SolvencyVerifier is SolvencyVerifierAdmin {
             keccak256(bytes(fdcProof.data.requestBody.url)) == srcHash,
             "SolvencyVerifier: source mismatch"
         );
+        if (confidentialReserves[subject]) {
+            return abi.decode(fdcProof.data.responseBody.abiEncodedData, (bytes32));
+        }
         DataTransportObject memory dto = abi.decode(fdcProof.data.responseBody.abiEncodedData, (DataTransportObject));
-        return dto.reserves;
+        return keccak256(abi.encode(dto.reserves));
     }
 
     // --- core ---
@@ -122,8 +137,10 @@ contract SolvencyVerifier is SolvencyVerifierAdmin {
         );
         require(recoverSigner(claim, teeSignature) == teeAddress, "SolvencyVerifier: bad TEE signature");
 
-        uint256 reserves = _attestedReserves(fdcProof, claim.subject);
-        require(keccak256(abi.encode(reserves)) == claim.reservesCommitment, "SolvencyVerifier: reserves mismatch");
+        require(
+            _attestedReservesCommitment(fdcProof, claim.subject) == claim.reservesCommitment,
+            "SolvencyVerifier: reserves mismatch"
+        );
 
         usedNonce[claim.nonce] = true;
 

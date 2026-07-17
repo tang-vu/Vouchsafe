@@ -7,6 +7,7 @@ export interface ProveSolvencyRequest {
   reserves: string[]; // integer strings (private)
   liabilities: string[]; // integer strings (private)
   salt: string; // 0x bytes32 — blinds the input commitment
+  reservesSalt?: string; // 0x bytes32 (private) — confidential-reserves mode: salts the reserves commitment so the endpoint publishes keccak256(totalReserves, reservesSalt) instead of the raw total
   nonce: string | number; // unique per assertion (uint256)
   timestamp?: number; // assertion time T (seconds); defaults to now
   chainId: number; // domain binding
@@ -20,7 +21,8 @@ export interface ProveSolvencyRequest {
 export interface SolvencyAttestationResult {
   subject: string;
   inputHash: string; // bytes32: keccak256(abi.encode(totalReserves, totalLiabilities, salt))
-  reservesCommitment: string; // bytes32: keccak256(abi.encode(totalReserves))
+  reservesCommitment: string; // bytes32: keccak256(abi.encode(totalReserves)) — or, with reservesSalt, keccak256(abi.encode(totalReserves, reservesSalt))
+  confidentialReserves: boolean; // true when the commitment is salted (confidential-reserves mode)
   solvent: boolean;
   timestamp: number;
   nonce: string;

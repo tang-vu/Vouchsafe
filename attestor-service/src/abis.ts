@@ -12,6 +12,8 @@ export const VERIFIER_ABI = [
   "function setTeeAddress(address)",
   "function reservesSourceHash(address) view returns (bytes32)",
   "function setReservesSource(address subject, string url)",
+  "function confidentialReserves(address) view returns (bool)",
+  "function setConfidentialReserves(address subject, bool enabled)",
   `function recordSolvency(${CLAIM} claim, bytes teeSignature, ${FDC_PROOF} fdcProof) returns (bytes32)`,
   "function raiseFraud(bytes32 id, uint256 reserves, uint256 liabilities, bytes32 salt)",
   // quorum + per-subject policy

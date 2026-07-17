@@ -13,7 +13,9 @@ An issuer feeds sensitive figures (bank balances, XRP holdings, off-chain positi
 a commitment to the inputs plus the boolean result, **never the raw numbers**. An **FDC Web2Json** proof brings the
 off-chain reserves on-chain, and the attestation is bound to a **real FXRP agent**. An **FDC Payment** proof adds an
 **XRPL-native rail**: the subject proves control of its registered XRP reserve address by answering an on-chain
-challenge with a real XRPL payment — no custodian API in the loop. The attestor **stakes** collateral;
+challenge with a real XRPL payment — no custodian API in the loop. A per-issuer **confidential-reserves mode**
+hides the reserves figure too: the endpoint publishes a **salted commitment** instead of the raw total, the TEE
+opens it privately, and the chain only ever compares commitments. The attestor **stakes** collateral;
 if the claim is later proven false, the stake is **slashed**. Independent attestors can **endorse** a recorded
 attestation with their own stake — a per-issuer **quorum policy** decides when the claim counts as final, and a
 proven fraud slashes the recorder and every endorser. Private (TEE) + accountable (economic).
@@ -80,6 +82,8 @@ The demo prints explorer links for the recorded attestation and the slash transa
 
 Real on Coston2: the confidential computation, the TEE signature + on-chain `ecrecover`, both FDC round-trips
 (Web2Json + XRPL Payment), the FXRP agent binding, staking/slashing, and XRPL reserve-address control proofs.
+Confidential-reserves mode (`CONFIDENTIAL_RESERVES=1` + `RESERVES_SALT`, per-subject on-chain flag) is fully
+unit-tested; a live run additionally needs the reserves endpoint to serve the salted commitment JSON.
 Simulated: the enclave itself (a local process) and the `TeeExtensionRegistry` round-trip (not yet published on
 Coston2). A **one-command GCP Confidential Space deployment** ships in the repo
 (`bash tee-extension/confidential-space/setup-confidential-space.sh`, guide in

@@ -30,12 +30,25 @@ function randomNonce(): string {
   return BigInt(hexlify(randomBytes(32))).toString();
 }
 
-/** Register the subject's reserves source with the verifier (owner-only; the demo key is the owner). */
+/** Register the subject's reserves source with the verifier (owner-only; the demo key is the owner),
+ *  and keep the on-chain confidential-reserves flag in sync with the configured mode. */
 async function ensureReservesSource(verifier: Contract, subject: string) {
   const expected = keccak256(toUtf8Bytes(config.reservesUrl));
   if ((await verifier.reservesSourceHash(subject)) !== expected) {
     await (await verifier.setReservesSource(subject, config.reservesUrl)).wait();
   }
+  if ((await verifier.confidentialReserves(subject)) !== config.confidentialReserves) {
+    await (await verifier.setConfidentialReserves(subject, config.confidentialReserves)).wait();
+  }
+}
+
+/** Confidential-reserves mode needs the private bytes32 salt matching the endpoint's commitment. */
+function confidentialReservesSalt(): string | undefined {
+  if (!config.confidentialReserves) return undefined;
+  if (!/^0x[0-9a-fA-F]{64}$/.test(config.reservesSalt)) {
+    throw new Error("CONFIDENTIAL_RESERVES=1 requires RESERVES_SALT to be a 0x-prefixed 32-byte hex string");
+  }
+  return config.reservesSalt;
 }
 
 /** Start the confidential extension in-process (stands in for the enclave endpoint). */
@@ -84,6 +97,7 @@ async function fetchReserveProof(wallet: Wallet, p: JsonRpcProvider, log: Logger
     apiKey: config.apiKey,
     daLayerUrl: config.daLayerUrl,
     reservesUrl: config.reservesUrl,
+    confidential: config.confidentialReserves,
     log,
   });
 }
@@ -121,6 +135,7 @@ export async function attest(input: AttestInput, log: Logger = console.log): Pro
         reserves: input.reserves,
         liabilities: input.liabilities,
         salt: randomSalt(),
+        reservesSalt: confidentialReservesSalt(),
         nonce: randomNonce(),
         chainId: config.chainId,
         verifier: config.addresses.SolvencyVerifier,
@@ -194,8 +209,11 @@ export async function commitFraud(input: AttestInput, log: Logger = console.log)
   const totalReserves = input.reserves.reduce((a, b) => a + BigInt(b), 0n);
   const totalLiabilities = input.liabilities.reduce((a, b) => a + BigInt(b), 0n);
   const salt = randomSalt();
+  const reservesSalt = confidentialReservesSalt();
   const inputHash = keccak256(coder.encode(["uint256", "uint256", "bytes32"], [totalReserves, totalLiabilities, salt]));
-  const reservesCommitment = keccak256(coder.encode(["uint256"], [totalReserves]));
+  const reservesCommitment = reservesSalt
+    ? keccak256(coder.encode(["uint256", "bytes32"], [totalReserves, reservesSalt]))
+    : keccak256(coder.encode(["uint256"], [totalReserves]));
   const timestamp = Math.floor(Date.now() / 1000);
   const nonce = randomNonce();
 

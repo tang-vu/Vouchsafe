@@ -38,6 +38,11 @@ abstract contract SolvencyVerifierAdmin is Ownable {
     ///         source the owner vetted, so an attestor cannot fabricate reserves from their own endpoint.
     mapping(address => bytes32) public reservesSourceHash;
 
+    /// @notice Subjects whose reserves source publishes a SALTED commitment
+    ///         (`keccak256(abi.encode(totalReserves, reservesSalt))`) instead of the raw reserves total,
+    ///         keeping the reserves figure off-chain and off the public endpoint entirely.
+    mapping(address => bool) public confidentialReserves;
+
     /// @notice Per-subject stake / penalty / quorum overrides.
     mapping(address => SubjectPolicy) public subjectPolicy;
 
@@ -51,6 +56,7 @@ abstract contract SolvencyVerifierAdmin is Ownable {
     event FdcVerifierOverrideUpdated(address indexed verifier);
     event FdcOverrideLocked();
     event ReservesSourceSet(address indexed subject, bytes32 urlHash);
+    event ConfidentialReservesSet(address indexed subject, bool enabled);
     event SubjectPolicySet(
         address indexed subject,
         uint256 minStake,
@@ -95,6 +101,13 @@ abstract contract SolvencyVerifierAdmin is Ownable {
         bytes32 h = keccak256(bytes(url));
         reservesSourceHash[subject] = h;
         emit ReservesSourceSet(subject, h);
+    }
+
+    /// @notice Switch a subject between plain reserves (endpoint serves the raw total) and
+    ///         confidential reserves (endpoint serves a salted commitment; the figure stays private).
+    function setConfidentialReserves(address subject, bool enabled) external onlyOwner {
+        confidentialReserves[subject] = enabled;
+        emit ConfidentialReservesSet(subject, enabled);
     }
 
     /// @notice Set (or clear, with zeros) the stake / penalty / quorum policy for a subject.

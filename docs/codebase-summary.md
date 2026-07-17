@@ -10,19 +10,19 @@ Monorepo (yarn workspaces). Everything targets Flare Coston2 (chain id 114); Fla
 | `src/SolvencyRegistry.sol` | Append-only, commitment-only attestation store indexed by subject; verifier-gated writes + revoke. Deterministic id `keccak256(subject, attestor, inputHash, nonce)`. |
 | `src/AttestorStaking.sol` | Native-C2FLR stake; `stake` / `requestUnstake` (cooldown) / `withdraw` (nonReentrant) / `slash` / `lockUntil`. `minStake` gate; challenge-window lock prevents exit-before-slash. |
 | `src/SolvencyVerifier.sol` | Core. `recordSolvency(claim, teeSig, fdcProof)` verifies the TEE signature (`ecrecover == teeAddress` over a chain+verifier-bound EIP-191 digest), verifies the FDC Web2Json proof **from the subject's owner-registered source**, binds attested reserves to `reservesCommitment`, checks the timestamp is recent, gates on the subject's effective stake, records, locks stake. `endorse(id)` lets an independent staked attestor back the claim (capped at `MAX_ENDORSERS=32`, stake locked a fresh window); `isQuorate(id)` reports the per-subject quorum. `raiseFraud(id, reserves, liabilities, salt)` = permissionless slashing of the recorder **and every endorser**: the reveal must open the stored `inputHash` with `reserves < liabilities` (no FDC needed — `inputHash` already fixes the asserted reserves). |
-| `src/SolvencyVerifierAdmin.sol` | Abstract base: storage, owner-gated setters, FDC verifier resolution, and `SubjectPolicy` (`minStake` / `slashPenalty` / `requiredEndorsements` per subject; zero = global fallback) with `requiredStakeFor` / `slashPenaltyFor`. |
+| `src/SolvencyVerifierAdmin.sol` | Abstract base: storage, owner-gated setters, FDC verifier resolution, per-subject `confidentialReserves` flag (endpoint serves a salted commitment instead of the raw total — reserves figure never on-chain), and `SubjectPolicy` (`minStake` / `slashPenalty` / `requiredEndorsements` per subject; zero = global fallback) with `requiredStakeFor` / `slashPenaltyFor`. |
 | `src/VouchsafeInstructionSender.sol` | FCC InstructionSender footprint. Routes via `TeeExtensionRegistry.sendInstructions` when configured; otherwise emits an FCC-tagged event the attestor-service watches. |
 | `src/FxrpAgentBinding.sol` | Read-only: resolves FXRP `AssetManager` + agent metadata via the registry (binds a subject to a real agent). |
 | `src/XrplReserveProof.sol` | XRPL-native reserve-address control via FDC **Payment**: owner registers a subject's XRP address (standard hash); `challengeRef(subject, nonce)` derives a chain+contract-bound 32-byte memo reference; `proveControl` verifies the FDC proof, source-address hash, reference, success status, freshness — replay-safe via per-subject nonce + used-tx guards. `lastProof` / `isFresh` views. |
 | `src/interfaces/*`, `src/mocks/Mock{Web2Json,Payment}Verifier.sol` | Local interfaces + test-only FDC verifier stubs. |
 | `scripts/` | `deploy.ts` (records `startBlock` for event scans), `deploy-xrpl-reserve-proof.ts` (appends to deployments), `verify.ts`, `fassets/{list-agents,agent-info}.ts`. |
-| `test/` | 56 unit tests (registry, staking, verifier FDC+fraud, quorum+policy, instruction sender, XRPL proof). |
+| `test/` | 63 unit tests (registry, staking, verifier FDC+fraud, confidential reserves, quorum+policy, instruction sender, XRPL proof). |
 
 ## `tee-extension/` — TypeScript confidential compute (simulated TEE)
 
 | File | Responsibility |
 |---|---|
-| `src/solvency-compute.ts` | Sums reserves/liabilities, decides solvency, builds `inputHash` + `reservesCommitment`. Validates inputs. |
+| `src/solvency-compute.ts` | Sums reserves/liabilities, decides solvency, builds `inputHash` + `reservesCommitment` (salted with the private `reservesSalt` in confidential-reserves mode). Validates inputs. |
 | `src/tee-signer.ts` | Holds the (simulated) enclave key; reproduces the on-chain `claimDigest` and signs EIP-191. |
 | `src/action-handler.ts` | FCC action-handler pattern: decode → validate → compute (confidential) → sign. Raw figures never returned. |
 | `src/server.ts` / `index.ts` | HTTP `/action` (FCC OPType/OPCommand), `/health`, `/pubkey`. |
@@ -51,8 +51,8 @@ Monorepo (yarn workspaces). Everything targets Flare Coston2 (chain id 114); Fla
 
 ## Key invariants
 - Raw reserves/liabilities never leave the enclave process — absent from output, logs, and chain.
-- `recordSolvency` requires **both** a valid TEE signature and a valid FDC proof; the attested reserves must match
-  the claim's `reservesCommitment`.
+- `recordSolvency` requires **both** a valid TEE signature and a valid FDC proof; the attested reserves (plain
+  mode) or the endpoint's salted commitment (confidential mode) must match the claim's `reservesCommitment`.
 - Stake is locked for the challenge window on each assertion; slashing is only triggered by a cryptographically
   verifiable fraud proof (commitment reveal + FDC counter-proof of insolvency).
 - Endorsing an attestation makes the endorser's stake slashable for the same claim; a subject's attestation is

@@ -25,6 +25,11 @@ export const config = {
   explorer: "https://coston2-explorer.flare.network",
   privateKey: process.env.PRIVATE_KEY ?? "",
   reservesUrl: process.env.RESERVES_URL ?? "",
+  // Confidential-reserves mode: RESERVES_URL serves {"reservesCommitment": "0x…"} (a salted bytes32
+  // commitment) instead of the raw total; RESERVES_SALT is the matching private bytes32 salt handed
+  // to the TEE. Both must be consistent with the endpoint or recording reverts on-chain.
+  confidentialReserves: /^(1|true)$/i.test(process.env.CONFIDENTIAL_RESERVES ?? ""),
+  reservesSalt: process.env.RESERVES_SALT ?? "",
   verifierUrl: process.env.VERIFIER_URL_TESTNET ?? "",
   apiKey: process.env.VERIFIER_API_KEY_TESTNET ?? "",
   daLayerUrl: process.env.COSTON2_DA_LAYER_URL ?? "",

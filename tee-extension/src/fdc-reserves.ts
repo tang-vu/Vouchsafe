@@ -26,6 +26,9 @@ export interface ProveReservesOptions {
   apiKey: string;
   daLayerUrl: string;
   reservesUrl: string;
+  /** Confidential-reserves mode: the endpoint serves {"reservesCommitment": "0x…"} (a salted bytes32
+   *  commitment) instead of the raw {"reserves": <int>} total. */
+  confidential?: boolean;
   log?: (msg: string) => void;
 }
 
@@ -33,19 +36,30 @@ export async function proveReserves(opts: ProveReservesOptions): Promise<Web2Jso
   const log = opts.log ?? console.log;
   const { provider, wallet } = opts;
 
-  // 1. prepareRequest — the reserves endpoint returns {"reserves": <int>}; keep only that field.
+  // 1. prepareRequest — plain mode: the endpoint returns {"reserves": <int>}; confidential mode:
+  //    {"reservesCommitment": "0x…"} (salted bytes32 commitment — the raw total never leaves the subject).
   const requestBody = {
     url: opts.reservesUrl,
     httpMethod: "GET",
     headers: "{}",
     queryParams: "{}",
     body: "{}",
-    postProcessJq: "{reserves: .reserves}",
-    abiSignature: JSON.stringify({
-      components: [{ internalType: "uint256", name: "reserves", type: "uint256" }],
-      name: "task",
-      type: "tuple",
-    }),
+    postProcessJq: opts.confidential
+      ? "{reservesCommitment: .reservesCommitment}"
+      : "{reserves: .reserves}",
+    abiSignature: JSON.stringify(
+      opts.confidential
+        ? {
+            components: [{ internalType: "bytes32", name: "reservesCommitment", type: "bytes32" }],
+            name: "task",
+            type: "tuple",
+          }
+        : {
+            components: [{ internalType: "uint256", name: "reserves", type: "uint256" }],
+            name: "task",
+            type: "tuple",
+          }
+    ),
   };
   const prepUrl = `${opts.verifierUrl}/verifier/web2/Web2Json/prepareRequest`;
   const prep = await fetch(prepUrl, {
